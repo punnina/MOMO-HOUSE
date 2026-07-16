@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Momo · The House of Rooms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F2EA; --ink:#2B2430; --pansy:#5A4470; --gold:#C29B4A;
+    --faded:#7A7185; --night:#12101A;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--night);color:var(--paper);font-family:'Lora',serif;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  html.lenis,html.lenis body{height:auto}
+  .lenis.lenis-smooth{scroll-behavior:auto!important}
+
+  #scroll-space{width:100%;pointer-events:none}
+  #stage{position:fixed;inset:0;z-index:0}
+  #stage canvas{display:block}
+
+  /* grain + vignette */
+  #veil{position:fixed;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 55%,rgba(10,8,16,.55) 100%)}
+  #grain{position:fixed;inset:-100px;z-index:3;pointer-events:none;opacity:.06;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    animation:grain 7s steps(10) infinite}
+  @keyframes grain{0%,100%{transform:translate(0,0)}20%{transform:translate(-40px,30px)}
+    40%{transform:translate(30px,-40px)}60%{transform:translate(-30px,-20px)}80%{transform:translate(40px,20px)}}
+
+  /* loader */
+  #loader{position:fixed;inset:0;z-index:20;background:var(--night);display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;
+    transition:opacity 1.6s ease}
+  #loader.gone{opacity:0;pointer-events:none}
+  #loader .word{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(3rem,9vw,7rem);
+    letter-spacing:.42em;text-indent:.42em;color:var(--paper);opacity:.92}
+  #loader .whisper{font-style:italic;color:var(--faded);font-size:.95rem;letter-spacing:.08em}
+  #loader .lamp{width:1px;height:64px;background:linear-gradient(to bottom,transparent,var(--gold),transparent);
+    animation:lamp 2.2s ease-in-out infinite}
+  @keyframes lamp{0%,100%{opacity:.25}50%{opacity:1}}
+
+  /* text overlays */
+  .scene-text{position:fixed;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;padding:0 6vw}
+  .scene-text.active{pointer-events:auto}
+  .center-col{max-width:640px;width:100%;text-align:center}
+
+  .mega{font-family:'Cormorant Garamond',serif;font-weight:300;
+    font-size:clamp(3.4rem,11vw,9rem);line-height:1.02;letter-spacing:.02em;color:var(--paper)}
+  .mega .thin{font-style:italic;color:var(--gold)}
+  .kicker{font-family:'Lora',serif;font-size:.78rem;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--gold);margin-bottom:1.6rem}
+  .whisper{font-style:italic;color:var(--faded);font-size:1rem;line-height:1.8}
+
+  /* reading panels: scrim keeps prose sovereign over any geometry behind it */
+  .reader{position:fixed;inset:0;z-index:2;display:flex;justify-content:center;
+    opacity:0;pointer-events:none;
+    background:radial-gradient(ellipse 90% 80% at center,rgba(14,11,20,.93) 40%,rgba(14,11,20,.62) 100%)}
+  .reader p,.reader h2{text-shadow:0 1px 14px rgba(10,8,16,.9)}
+  .scene-text.low{align-items:flex-end;padding-bottom:13vh}
+  .reader.active{pointer-events:auto}
+  .reader .page{width:min(680px,88vw);margin-top:14vh;height:72vh;overflow:hidden;position:relative}
+  .reader .page::before,.reader .page::after{content:"";position:absolute;left:0;right:0;height:9vh;z-index:2;pointer-events:none}
+  .reader .page::before{top:0;background:linear-gradient(to bottom,var(--night),transparent)}
+  .reader .page::after{bottom:0;background:linear-gradient(to top,var(--night),transparent)}
+  .reader .flow{will-change:transform}
+  .reader h2{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(2.6rem,6vw,4.6rem);
+    line-height:1.05;margin-bottom:.4rem;color:var(--paper)}
+  .reader .sub{font-style:italic;color:var(--gold);letter-spacing:.06em;margin-bottom:3rem;font-size:1.05rem}
+  .reader p{font-size:1.06rem;line-height:2.05;color:#E9E2D6;margin-bottom:1.9rem;
+    font-weight:400;text-align:left}
+  .reader p.first::first-letter{font-family:'Cormorant Garamond',serif;font-size:3.4em;float:left;
+    line-height:.82;padding-right:.12em;color:var(--gold)}
+  .reader .note-p{font-size:1.02rem;font-style:normal}
+
+  /* HUD */
+  #hud{position:fixed;z-index:5;inset:auto 0 0 0;display:flex;justify-content:space-between;
+    align-items:flex-end;padding:1.4rem 1.8rem;pointer-events:none;
+    font-size:.72rem;letter-spacing:.26em;text-transform:uppercase;color:var(--faded)}
+  #hud .room-name{transition:opacity .8s}
+  #hud .right{display:flex;gap:1.6rem;align-items:center;pointer-events:auto}
+  #wander-btn{background:none;border:1px solid rgba(194,155,74,.4);color:var(--gold);
+    font:inherit;letter-spacing:.26em;text-transform:uppercase;padding:.55em 1.1em;cursor:pointer;
+    transition:all .4s;border-radius:2px}
+  #wander-btn:hover{background:rgba(194,155,74,.12)}
+  #progress{position:fixed;top:0;left:0;height:2px;background:var(--gold);z-index:6;width:0;opacity:.7}
+
+  #hint{position:fixed;bottom:4.6rem;left:50%;transform:translateX(-50%);z-index:5;
+    font-style:italic;color:var(--faded);font-size:.9rem;opacity:0;transition:opacity 1.2s;
+    pointer-events:none;text-align:center;font-family:'Lora',serif}
+  #toast{position:fixed;top:1.6rem;left:50%;transform:translate(-50%,-8px);z-index:7;
+    background:rgba(43,36,48,.82);border:1px solid rgba(194,155,74,.35);color:var(--paper);
+    padding:.8em 1.5em;font-size:.86rem;font-style:italic;border-radius:2px;opacity:0;
+    transition:all 1s;backdrop-filter:blur(6px)}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  #wander-help{position:fixed;bottom:4.6rem;left:50%;transform:translateX(-50%);z-index:5;
+    color:var(--faded);font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;opacity:0;
+    transition:opacity .8s;pointer-events:none}
+  body.wandering #wander-help{opacity:.9}
+  body.wandering .scene-text,body.wandering .reader{opacity:0!important;pointer-events:none!important}
+
+  @media (max-width:720px){
+    #hud{padding:1rem 1.2rem;font-size:.62rem}
+    .reader p{font-size:.98rem;line-height:1.95}
+    #wander-btn{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="lamp"></div>
+  <div class="word">MOMO</div>
+  <div class="whisper">the house is waking...</div>
+</div>
+
+<div id="stage"></div>
+<div id="veil"></div>
+<div id="grain"></div>
+<div id="progress"></div>
+
+<!-- ══ overlay scenes, driven by scroll progress ══ -->
+
+<div class="scene-text low" id="t-cover">
+  <div class="center-col">
+    <div class="whisper">a house of rooms, for my son...<br>walk in when you are ready.</div>
+  </div>
+</div>
+
+<div class="scene-text" id="t-threshold">
+  <div class="center-col">
+    <div class="whisper" style="font-size:1.15rem;line-height:2.1">
+      Every life is a house.<br>
+      Each stage of awareness, a room.<br>
+      The door is open.
+    </div>
+  </div>
+</div>
+
+<div class="reader" id="r-note">
+  <div class="page"><div class="flow">
+    <h2>A Note Before This Story Begins</h2>
+    <div class="sub">from Momo</div>
+    <p class="note-p first">Before this story begins, I want you to know how it begins.</p>
+    <p class="note-p">The earliest memories in these pages did not come to me through photographs or stories told by others. They came to me through past life regression, a guided meditation I practiced many times, following the work of Dr. Brian Weiss. In one of those sessions, I found myself going back further than I ever had before. Back to being a baby. I know this because I was looking up at the world from the floor, at yellow plastic woven chairs, at white tile, at the light coming through a window. I saw the room completely and described everything I saw to my mother. She confirmed it without hesitation. That was our first house. Everything I had seen was real.</p>
+    <p class="note-p">I offer this not as proof of anything. Only as honesty about where these pages come from. Some memories arrive through language. These arrived through something older than that.</p>
+    <p class="note-p">This is not a story. It is not a fable. It is simply the truth of a life, told as honestly as I know how.</p>
+  </div></div>
+</div>
+
+<div class="scene-text low" id="t-room1">
+  <div class="center-col">
+    <div class="kicker">Room I</div>
+    <div class="whisper">the beginning of awareness</div>
+  </div>
+</div>
+
+<div class="reader" id="r-room1">
+  <div class="page"><div class="flow">
+    <h2>The First Room</h2>
+    <div class="sub">The Beginning of Awareness</div>
+    <p class="first">From the first moment I began to see, I knew nothing of the word “me,” so it was easy to simply be. I can still remember my first room, though I couldn’t have been more than a few months old. The world towered above me... legs and light and laughter seen from the floor up. There were yellow plastic woven chairs, so cheery and geometrically fascinating from my tiny perspective. The floors were hard and white, cool against my skin, and the warmth of my mother’s arms when she lifted me felt like sunlight turned to flesh. Beams of real sunlight danced through the window like playful fairies as I snuggled my little silkie and devoured my warm bottle of milk. These memories still drift vividly through my mind’s eye whenever I reach for them.</p>
+    <p>Time then was not a straight line but a shimmer... moments floating, colliding, vanishing like soap bubbles. I remember sound before words: the rhythm of voices, the hum of a refrigerator that felt like a lullaby, the faraway bark of a dog echoing through sunlight. The air itself seemed alive, carrying warmth, scent, and comfort in invisible waves. I didn’t yet know what distance was, or that people could ever leave. Everything was here, always; mother, light, the gentle thud of her heart when she held me. The world was a cradle, and I floated inside it, content to simply exist.</p>
+    <p>Then one morning, the rhythm changed. My mother’s arms lifted me not toward the window light but toward the door. I remember the rustle of her clothes, the scent of her perfume, the soft tremor in my chest as we stepped into the brightness. The world outside moved too fast... cars flashing by, trees bending in the wind, clouds racing overhead. I didn’t know the word “leaving,” only the ache of motion and the blur of color as we drove away. But soon the road slowed, and the air grew calmer. My grandmother’s little white house appeared, wrapped in flowers and sunlight, as if it had been waiting for me all along. Her doorway smelled of coffee and goodness. Inside, everything glowed; the toasty air, the hum of her voice, the small white poodle Tiki wagging as if he’d known me forever, Lucy the orange cat stretching on the windowsill, and Bridget, soft and bright, resting at the foot of grandma’s chair. My fear dissolved in that warmth. My mother’s goodbye faded into the rhythm of my grandmother’s love, steady as a heartbeat.</p>
+    <p>Behind my grandmother’s house was her garden, a tiny patch of earth that seemed to me as vast as a forest. Flowers bloomed in every corner, especially pansies, her favorite, their faces bright and brave in the sun. The air was always alive with wings and motion... bees murmuring, butterflies tumbling, birds singing from the cherry tree that guarded the fence. My grandmother never hurried me. She moved through her days with the patience of the earth itself, speaking softly, laughing easily, never cross, never cruel. She’d tell me that silence was golden, and in her company, I learned what that meant. We’d walk together to the grocery store or down toward the flood wall, her hand warm in mine, her voice drifting with stories from when she was a girl during the great flood in Parkersburg. Even the way she said the word “flood” carried a hush, as if the river still lived inside her memory.</p>
+    <p>I remember lying on the ground near the rhubarb, Bridget and Tiki and Charlie and Ty somewhere close by, the sun warm on my back, watching the ants. They were all my friends, my truest ones in those early years, the dogs and cats who asked nothing of me and gave everything. We were our own little world out there, the animals and I, while my grandmother moved quietly nearby with her flowers. I would watch the ants for hours. Over days. Over weeks. They moved in perfect order through their own complete universe, purposeful and unhurried, carrying things many times their size, communicating without words, building something I couldn’t see the whole of but knew was there. I would lie very still and imagine myself small enough to walk among them, to enter their world the way you step through a door. I understood something then that I wouldn’t have language for until much later, that the world was layered. That life existed in worlds within worlds, each one whole and busy and entirely unaware of the others running alongside it. That you could be standing in one world and another could be happening right beneath your feet, or across an ocean, or in a life you hadn’t lived yet. I think of those hours sometimes when I try to understand how I was able, later, to step off planes in countries where I didn’t speak a single word and feel curious rather than only afraid. Something in me had already practiced it. Had already learned, on my grandmother’s back steps with her animals and her flowers and her silence, that other worlds were not threatening. They were just waiting to be understood.</p>
+    <p>The kitchen was its own small world. A percolator sat on the stove, sighing and bubbling with a sound I came to love before I even knew the word for it. She always made her coffee with lots of cream and sugar, and she always gave me a little taste. I didn’t know then that she was giving me something I would carry for the rest of my life. I only knew it was warm, and sweet, and hers.</p>
+    <p>But it was the back steps where she truly taught me. They weren’t much, just a few steps leading down from the house into her garden, but to me they were a throne and a classroom and a church all at once. She would sit there and take my hand, this tiny woman, under five feet tall, and we would look at her flowers together without needing to say very much at all. She moved through silence the way other people moved through conversation, easily, naturally, as if quiet were simply another way of speaking. I learned from her, without being taught, that you could transmit entire worlds without a single word. That stillness was not emptiness. That if you sat still long enough and opened yourself completely, the garden would come to you.</p>
+    <p>Every time I was with her, I felt I was coming home. Not to a place, but to something. A feeling I recognized before I had language for it, something settled and safe and completely without performance. I have never in my life met anyone as genuinely pure as she was. Not before, not since. I was lucky in ways I couldn’t possibly have understood then, that my first and deepest experience of love came without condition, without shadow. She was simply good. The way sunlight is good. The way a flower turning toward warmth is good. It became the measure I would carry quietly inside me for everything that came after.</p>
+    <p>Her patience had been honed by a lifetime of love and loss. Motherhood came easily to my grandmother; she had raised six children over twenty years, from the eldest to the youngest, my mother, the baby of the family. When I was born, my grandfather’s health had already fallen into decline, and he was bedridden. He called me Moni-Kay, and somehow, even in his frailty, I brought a spark of joy back into the quiet house. Their nest had just emptied after a lifetime of fullness, children grown, married, and gone, and now, suddenly, a baby’s cry filled the silence again.</p>
+    <p>My mother was not yet nineteen, newly married, and shouldering more than most could bear: a demanding husband, a new job, a newborn daughter, and a dying father. When my grandfather passed away eight days after my first birthday, her temporary position with the City of Parkersburg became full-time. It seemed the right moment to give my grandmother something... or rather, someone... to keep her heart and hands joyfully busy. She accepted without hesitation, quietly and with her characteristic grace. From then on, I was hers each day of the week until kindergarten finally pulled me away. Those years became the golden thread of my early life and the essence of who I am still today.</p>
+  </div></div>
+</div>
+
+<div class="scene-text low" id="t-room2">
+  <div class="center-col">
+    <div class="kicker">Room II</div>
+    <div class="whisper">awareness turned outward</div>
+  </div>
+</div>
+
+<div class="reader" id="r-room2">
+  <div class="page"><div class="flow">
+    <h2>A Room with Windows</h2>
+    <div class="sub">Awareness Turned Outward</div>
+    <p class="first">There had always been a gentle balance between my mother’s presence and my grandmother’s arms, a peaceful rhythm I moved between without effort. But as I grew, new windows began to open, and through them I sensed that not everything was as harmonious as it had once seemed.</p>
+    <p>The contrast revealed itself most sharply when my father was near. Something in the air shifted then, not only between him and me, but between him and my mother as well. Where warmth usually lived, there was an absence I could not name. I felt it as a hollow space, a longing to experience with him the same ease and closeness I knew with my mother and grandmother. Instead, there was a wall. I did not yet understand words like jealousy or resentment, only that I tried quietly and earnestly to be seen.</p>
+    <p>I wanted him to recognize me as his little daughter, the one who looked so much like him, the one who needed his love to grow whole and unguarded. That same feeling lingered when his mother, who lived across the street, was present. A strain entered the otherwise cheerful home, a subtle heaviness that settled without explanation.</p>
+    <p>My father worked every day, and when he returned home for dinner, he often disappeared into the television, the glow of its screen replacing any attention he might have given me. He never spent time with me, and even then I sensed his resentment, my mother forced to choose between being with him or tending to me. I could not understand her position; I only felt the loss. And so I reached for her more, trying to fill the emptiness he left behind.</p>
+    <p>The two sides of my family could not have been more different. On one side, I was openly adored, surrounded by aunts and uncles who offered affection freely and without condition. Their love felt effortless, as natural as breathing. On the other side stood my father, his mother, and his sister, bound together less by warmth than by competition. Their unity appeared only when others were watching, preserved in photographs and public moments, sustained by appearances rather than intimacy. Even as a child, I sensed the hollowness beneath it.</p>
+    <p>I was too young to understand the reasons for their animosity toward one another, and even now, it remains something I cannot fully explain. But I felt it then, unmistakably. The contrast was sharp enough to teach me without words. I knew, instinctively, which world I belonged to. Somewhere deep within me, an awareness was already forming, guiding me toward the example of my mother’s family. I understood, without being told, that if I wanted happiness, if I wanted a sense of lightness in my life, this was the path I would have to follow.</p>
+    <p>That awareness did not stay abstract; it settled into the way I moved through the world. I became attentive, watchful, sensitive to shifts in tone and mood. I learned to adjust myself instinctively, to soften my presence, to be agreeable, helpful, easy to love. Praise felt like proof of safety, and I sought it quietly, hoping it might bridge the distance I felt. I tried not to need too much and instead turned toward a faith that had not been taught; it simply was.</p>
+    <p>My mother used to say that I had begun speaking very late as a child. Everyone worried at first. But once I finally found my voice, there was no stopping it. My little motor mouth turned on and stayed on. I talked constantly to her, to my grandmother, to my toys, to myself. Around those I trusted, words poured out of me effortlessly, as if I had been storing them up for years. But where affection felt uncertain, my voice disappeared. There, I became quiet and shy, careful with every sound I made.</p>
+    <p>My mother had given me a little plastic, glow-in-the-dark star with a photograph of Jesus inside. Each night, after the lights were out, I would watch it and pray about everything and anything until I fell into a deep sleep. I spoke to Jesus the way a child speaks to a friend, simply and without fear. I spoke to my guardian angels, to the archangels too, without knowing their names or roles, only that they were there and listening. No one had ever told me that I couldn’t speak directly to them, and so I did. This quiet ritual became a refuge, something I would carry with me for the rest of my life.</p>
+    <p>Only later, when I learned about religions and their doctrines, did I begin to question my methods… but not for long. They had worked for me perfectly, just as they always had. Funny enough, my father would return that little star to me many years later, and I cherish it now as one of my most prized possessions.</p>
+    <p>Around those I felt secure with, I was open and expressive, unguarded in my joy. But where affection felt uncertain, I became careful. I listened more than I spoke. I studied faces. I learned which version of myself was most welcome and carried it with me like a small offering. Even then, without language for it, I understood that love could be abundant or withheld, and I adjusted accordingly. This was how I learned to belong…by sensing first, then shaping myself to fit.</p>
+  </div></div>
+</div>
+
+<div class="scene-text" id="t-end">
+  <div class="center-col">
+    <div class="whisper" style="font-size:1.1rem;line-height:2.1">
+      The next door is still being built.<br><br>
+      <span style="color:var(--gold)">Nine more rooms are waiting beyond it...</span><br>
+      voices, shadows, transformation, belonging,<br>
+      the concrete jungle, and a spring beside the Alster.
+    </div>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="room-name" id="room-name">outside</div>
+  <div class="right">
+    <button id="wander-btn">Wander the house</button>
+  </div>
+</div>
+<div id="hint">scroll, and the house will carry you</div>
+<div id="wander-help">W A S D to walk · drag to look · ESC to return to the story</div>
+<div id="toast"></div>
+
+<div id="scroll-space"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/lenis@1.1.14/dist/lenis.min.js"></script>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+/* ════════════════════════════════════════════════════════════
+   PAINTINGS MANIFEST
+   To hang a real image in a frame, replace null with a URL or
+   relative path, e.g. "paintings/pansies.jpg". Nothing else
+   needs to change.
+   ════════════════════════════════════════════════════════════ */
+const PAINTINGS = {
+  room1_garden: null,   // The First Room · the grandmother's garden
+  room1_kitchen: null,  // The First Room · percolator warmth
+  room2_window: null,   // A Room with Windows · light and distance
+  room2_star: null      // A Room with Windows · the glow-in-the-dark star
+};
+
+const COLORS = {
+  paper:0xF6F2EA, ink:0x2B2430, pansy:0x5A4470, gold:0xC29B4A,
+  night:0x12101A, warm:0xE8C98A, cool:0x8FA3C8
+};
+
+const isMobile = matchMedia('(max-width:720px)').matches || 'ontouchstart' in window;
+const PAGES = 26;                       // total scroll length in viewports
+document.getElementById('scroll-space').style.height = (PAGES*100) + 'vh';
+
+/* ── renderer / scene ─────────────────────────────────────── */
+const renderer = new THREE.WebGLRenderer({antialias:!isMobile, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile?1.5:2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COLORS.night);
+scene.fog = new THREE.FogExp2(COLORS.night, 0.055);
+
+const camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.1, 200);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.55, 0.85, 0.82);
+composer.addPass(bloom);
+
+/* ── procedural texture helpers ───────────────────────────── */
+function canvasTex(w,h,draw){
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  draw(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c); t.anisotropy=4; return t;
+}
+function textTex(lines,{size=170,italicLine=-1,color='#F6F2EA',sub=null}={}){
+  return canvasTex(2048,1024,(x,w,h)=>{
+    x.clearRect(0,0,w,h);
+    x.textAlign='center'; x.textBaseline='middle';
+    const lh=size*1.04, total=lines.length*lh+(sub?110:0);
+    lines.forEach((ln,i)=>{
+      x.font=`${i===italicLine?'italic ':''}300 ${size}px "Cormorant Garamond", serif`;
+      x.fillStyle = i===italicLine ? '#C29B4A' : color;
+      x.fillText(ln, w/2, h/2-total/2+lh*(i+0.5));
+    });
+    if(sub){
+      x.font='italic 46px "Lora", serif'; x.fillStyle='#C29B4A';
+      x.letterSpacing='14px';
+      x.fillText(sub, w/2, h/2+total/2-30);
+    }
+  });
+}
+/* soft round sprite so particles are motes, never squares */
+const dotTex=canvasTex(64,64,(x,w,h)=>{
+  const g=x.createRadialGradient(32,32,0,32,32,30);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.45,'rgba(255,255,255,.35)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,w,h);
+});
+/* an italic line of the book, hung in the air */
+function hangQuote(line,x,y,z,ry=0,wdt=7,op=0.3,px=88){
+  const tex=canvasTex(2048,384,(c,w,h)=>{
+    c.textAlign='center'; c.textBaseline='middle';
+    c.font=`italic 300 ${px}px "Cormorant Garamond", serif`;
+    c.fillStyle='#F6F2EA'; c.fillText(line,w/2,h/2);
+  });
+  const q=new THREE.Mesh(new THREE.PlaneGeometry(wdt,wdt*0.1875),
+    new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:op,
+      depthWrite:false,blending:THREE.AdditiveBlending}));
+  q.position.set(x,y,z); q.rotation.y=ry; q.userData.float={a:Math.random()*6.28,r:0.2};
+  scene.add(q); return q;
+}
+/* soft abstract painting: layered washes + blooms */
+function paintingTex(seedHues, accents){
+  return canvasTex(768,1024,(x,w,h)=>{
+    const g=x.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,seedHues[0]); g.addColorStop(1,seedHues[1]);
+    x.fillStyle=g; x.fillRect(0,0,w,h);
+    let s=7;
+    const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647;};
+    for(let i=0;i<46;i++){
+      const r=40+rnd()*190, px=rnd()*w, py=rnd()*h;
+      const rg=x.createRadialGradient(px,py,0,px,py,r);
+      const col=accents[Math.floor(rnd()*accents.length)];
+      rg.addColorStop(0,col+'55'); rg.addColorStop(1,col+'00');
+      x.fillStyle=rg; x.beginPath(); x.arc(px,py,r,0,7); x.fill();
+    }
+    /* faint horizon line, like a memory of landscape */
+    x.strokeStyle='#F6F2EA22'; x.lineWidth=2;
+    x.beginPath(); x.moveTo(0,h*0.62); x.bezierCurveTo(w*.3,h*.60,w*.6,h*.66,w,h*.63); x.stroke();
+  });
+}
+
+/* ── shared materials/geometry builders ───────────────────── */
+const matWall  = new THREE.MeshStandardMaterial({color:0x241E2E, roughness:0.94});
+const matWallW = new THREE.MeshStandardMaterial({color:0x3A3046, roughness:0.9});
+const matFloor = new THREE.MeshStandardMaterial({color:0x1A1622, roughness:0.85, metalness:0.08});
+const matGoldE = new THREE.MeshStandardMaterial({color:COLORS.gold, emissive:COLORS.gold, emissiveIntensity:1.6});
+
+function frameGroup(tex, w=2.2, h=3){
+  const g=new THREE.Group();
+  const art=new THREE.Mesh(new THREE.PlaneGeometry(w,h),
+    new THREE.MeshStandardMaterial({map:tex, roughness:0.9,
+      emissive:0xffffff, emissiveMap:tex, emissiveIntensity:0.32}));
+  g.add(art);
+  const fm=new THREE.MeshStandardMaterial({color:0x8a6c33, metalness:0.7, roughness:0.35});
+  const t=0.09, d=0.07;
+  [[0,h/2+t/2,w+2*t,t],[0,-h/2-t/2,w+2*t,t],[-w/2-t/2,0,t,h],[w/2+t/2,0,t,h]].forEach(([px,py,bw,bh])=>{
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,d),fm);
+    bar.position.set(px,py,0); g.add(bar);
+  });
+  return g;
+}
+function doorway(w=2.4,h=3.6,glow=0.0){
+  const g=new THREE.Group();
+  const fm=new THREE.MeshStandardMaterial({color:0x4A3E5C, roughness:0.8});
+  const t=0.18;
+  const l=new THREE.Mesh(new THREE.BoxGeometry(t,h,t),fm); l.position.set(-w/2,h/2,0);
+  const r=l.clone(); r.position.x=w/2;
+  const top=new THREE.Mesh(new THREE.BoxGeometry(w+t,t,t),fm); top.position.set(0,h,0);
+  g.add(l,r,top);
+  if(glow>0){
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(w-0.1,h-0.1),
+      new THREE.MeshBasicMaterial({color:COLORS.warm, transparent:true, opacity:glow,
+        blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+    p.position.set(0,h/2,0); g.add(p);
+  }
+  return g;
+}
+function room({z, w=14, d=16, h=6, wallMat=matWall}){
+  const g=new THREE.Group(); g.position.z=z;
+  const mk=(geo,mat,px,py,pz,rx=0,ry=0)=>{const m=new THREE.Mesh(geo,mat);
+    m.position.set(px,py,pz); m.rotation.set(rx,ry,0); g.add(m); return m;};
+  mk(new THREE.PlaneGeometry(w,d),matFloor,0,0,0,-Math.PI/2);          // floor
+  mk(new THREE.PlaneGeometry(w,d),wallMat,0,h,0, Math.PI/2);           // ceiling
+  mk(new THREE.PlaneGeometry(d,h),wallMat,-w/2,h/2,0,0, Math.PI/2);    // left
+  mk(new THREE.PlaneGeometry(d,h),wallMat, w/2,h/2,0,0,-Math.PI/2);    // right
+  scene.add(g); return g;
+}
+const shaftAlpha=canvasTex(128,256,(x,w,h)=>{
+  const g=x.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'rgba(255,255,255,.55)'); g.addColorStop(0.55,'rgba(255,255,255,.16)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,w,h);
+  /* soften the sides so shafts have no hard edges */
+  const s=x.createLinearGradient(0,0,w,0);
+  s.addColorStop(0,'rgba(0,0,0,1)'); s.addColorStop(0.25,'rgba(0,0,0,0)');
+  s.addColorStop(0.75,'rgba(0,0,0,0)'); s.addColorStop(1,'rgba(0,0,0,1)');
+  x.globalCompositeOperation='destination-out'; x.fillStyle=s; x.fillRect(0,0,w,h);
+});
+function lightShaft(x,y,z,ry,color,len=7,wTop=2.6){
+  const g=new THREE.Group();
+  const geo=new THREE.PlaneGeometry(wTop,len);
+  const m=new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.06,
+    alphaMap:shaftAlpha,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  for(let i=0;i<2;i++){
+    const p=new THREE.Mesh(geo,m); p.rotation.set(-Math.PI/3.1,0,(i-0.5)*0.1); g.add(p);
+  }
+  g.position.set(x,y,z); g.rotation.y=ry; scene.add(g); return g;
+}
+
+/* ══ WORLD ═════════════════════════════════════════════════
+   Layout along -z: the reader walks INTO the house.
+   z 0 .......... exterior, mist
+   z -12 ........ front door
+   z -18..-30 ... vestibule (the Note)
+   z -32..-48 ... corridor of doors
+   z -50..-66 ... ROOM I  (warm)
+   z -68..-84 ... ROOM II (cool, windows)
+   z -86........ the unfinished door
+   ══════════════════════════════════════════════════════════ */
+
+/* exterior ground + drifting motes everywhere */
+scene.add(new THREE.Mesh(new THREE.PlaneGeometry(400,400),
+  new THREE.MeshStandardMaterial({color:0x141020,roughness:1}))
+  .rotateX(-Math.PI/2));
+
+const amb=new THREE.AmbientLight(0x8878a8, 0.5); scene.add(amb);
+const moon=new THREE.DirectionalLight(0x9db4e8, 0.5); moon.position.set(6,12,8); scene.add(moon);
+
+/* floating MOMO title in the mist, held above the doorline */
+const title=new THREE.Mesh(new THREE.PlaneGeometry(11,5.5),
+  new THREE.MeshBasicMaterial({map:textTex(['MOMO'],{size:330,sub:'A  HOUSE  OF  ROOMS'}),
+    transparent:true, depthWrite:false}));
+title.position.set(0,6.6,-8); scene.add(title);
+
+/* the front door, glowing */
+const frontDoor=doorway(2.6,3.9,0.5); frontDoor.position.set(0,0,-12); scene.add(frontDoor);
+const doorLight=new THREE.PointLight(COLORS.warm,10,18,1.6); doorLight.position.set(0,2,-12.5); scene.add(doorLight);
+
+/* house silhouette around the door */
+const facade=new THREE.Mesh(new THREE.BoxGeometry(26,9,0.6),
+  new THREE.MeshStandardMaterial({color:0x0E0B16,roughness:1}));
+facade.position.set(0,4.5,-12.6); scene.add(facade);
+const doorHole=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.75),
+  new THREE.MeshBasicMaterial({color:0xC8A870}));
+doorHole.position.set(0,1.9,-12.28); scene.add(doorHole);
+
+/* vestibule */
+room({z:-24, w:10, d:14, h:5.4});
+const vestLamp=new THREE.PointLight(0xD8C8A8, 6, 14, 1.8); vestLamp.position.set(0,3.6,-24); scene.add(vestLamp);
+/* floating candle points in vestibule */
+for(let i=0;i<5;i++){
+  const s=new THREE.Mesh(new THREE.SphereGeometry(0.045,10,10),matGoldE);
+  s.position.set(Math.sin(i*2.2)*3.4, 2.2+Math.sin(i*1.7)*0.8, -20-i*2);
+  s.userData.float={a:Math.random()*6.28, r:0.25};
+  scene.add(s);
+}
+/* small empty frames drifting in the vestibule: memories not yet hung */
+for(let i=0;i<3;i++){
+  const f=frameGroup(paintingTex(['#1A1622','#241E2E'],['#5A4470','#C29B4A']),0.7,1.0);
+  f.position.set([-2.8,2.9,-2.2][i], 2.4+i*0.5, -21.5-i*2.4);
+  f.rotation.y=(i-1)*0.35;
+  f.userData.float={a:i*2.1, r:0.3};
+  scene.add(f);
+}
+
+/* corridor of doors: rooms within rooms, each holding a future chapter */
+const FUTURE=['VOICES','SHADOWS','TRANSFORMATION','BELONGING','THE CONCRETE JUNGLE','WITHOUT WORDS'];
+for(let i=0;i<6;i++){
+  const dw=doorway(2.3,3.5, i===5?0.35:0.12);
+  dw.position.set((i%2?1.9:-1.9), 0, -33-i*2.6);
+  dw.rotation.y=(i%2?-1:1)*0.28;
+  scene.add(dw);
+  const plaque=new THREE.Mesh(new THREE.PlaneGeometry(2.1,0.39),
+    new THREE.MeshBasicMaterial({map:canvasTex(1024,192,(x,w,h)=>{
+      x.textAlign='center'; x.textBaseline='middle';
+      x.font='300 72px "Cormorant Garamond", serif'; x.fillStyle='#C29B4A';
+      x.letterSpacing='20px'; x.fillText(FUTURE[i],w/2,h/2);
+    }),transparent:true,opacity:0.5,depthWrite:false,blending:THREE.AdditiveBlending}));
+  plaque.position.set(dw.position.x,3.85,dw.position.z);
+  plaque.rotation.y=dw.rotation.y;
+  scene.add(plaque);
+}
+const corridorGlow=new THREE.PointLight(0xB49AD8, 4, 16, 1.9); corridorGlow.position.set(0,3,-40); scene.add(corridorGlow);
+room({z:-40, w:8, d:20, h:5.2, wallMat:matWall});
+
+/* ── ROOM I: the first room · grandmother's warmth ───────── */
+const R1Z=-58;
+room({z:R1Z, w:15, d:17, h:6.2, wallMat:matWallW});
+/* back wall with giant chapter text */
+const r1back=new THREE.Mesh(new THREE.PlaneGeometry(15,6.2),matWallW);
+r1back.position.set(0,3.1,R1Z-8.4); scene.add(r1back);
+const r1text=new THREE.Mesh(new THREE.PlaneGeometry(12,6),
+  new THREE.MeshBasicMaterial({map:textTex(['THE FIRST','ROOM'],{size:250,italicLine:1}),
+    transparent:true, opacity:0.95, depthWrite:false}));
+r1text.position.set(0,3.2,R1Z-8.3); scene.add(r1text);
+
+/* window + sunlight shafts */
+const r1win=new THREE.Mesh(new THREE.PlaneGeometry(2.6,3.4),
+  new THREE.MeshBasicMaterial({color:0xE0C890,transparent:true,opacity:0.28,
+    blending:THREE.AdditiveBlending,depthWrite:false}));
+r1win.position.set(-7.4,3.1,R1Z+2); r1win.rotation.y=Math.PI/2; scene.add(r1win);
+lightShaft(-5.6,3.0,R1Z+2, Math.PI/2, 0xFFE0A0, 8, 3.2);
+const r1sun=new THREE.PointLight(0xFFD9A0, 14, 22, 1.7); r1sun.position.set(-6,3.4,R1Z+2); scene.add(r1sun);
+const r1fill=new THREE.PointLight(0xE8B478, 3, 18, 2); r1fill.position.set(3,2.5,R1Z-3); scene.add(r1fill);
+
+/* paintings */
+function hang(key, fallbackHues, fallbackAccents, x,y,z,ry, w=2.2,h=3){
+  const tex = PAINTINGS[key]
+    ? new THREE.TextureLoader().load(PAINTINGS[key])
+    : paintingTex(fallbackHues, fallbackAccents);
+  const f=frameGroup(tex,w,h); f.position.set(x,y,z); f.rotation.y=ry; scene.add(f); return f;
+}
+hang('room1_garden', ['#2E2440','#4A3A2A'], ['#C29B4A','#7A5FA0','#E8C98A','#5A4470'],
+      7.35,3.0,R1Z-1, -Math.PI/2, 2.4,3.2);   // right wall
+hang('room1_kitchen',['#3A2C22','#241E2E'], ['#E8C98A','#C29B4A','#8A5A30'],
+      7.35,3.0,R1Z+4.5, -Math.PI/2, 1.8,2.4);
+
+/* the book on the table: Room I's text made physical */
+const table=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.75,0.09,24),
+  new THREE.MeshStandardMaterial({color:0x3A2C22,roughness:0.6}));
+table.position.set(2.2,1.02,R1Z+3.4); scene.add(table);
+const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.12,1,12),table.material);
+leg.position.set(2.2,0.5,R1Z+3.4); scene.add(leg);
+const book=new THREE.Group();
+const cover=new THREE.Mesh(new THREE.BoxGeometry(0.66,0.05,0.92),
+  new THREE.MeshStandardMaterial({color:COLORS.pansy,roughness:0.5}));
+const pages=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.04,0.86),
+  new THREE.MeshStandardMaterial({color:COLORS.paper,roughness:0.9,
+    emissive:COLORS.paper,emissiveIntensity:0.18}));
+pages.position.y=0.045; book.add(cover,pages);
+book.position.set(2.2,1.1,R1Z+3.4); book.rotation.y=0.5; scene.add(book);
+const bookGlow=new THREE.PointLight(0xF6E8C8, 2.2, 4, 2); bookGlow.position.set(2.2,1.6,R1Z+3.4); scene.add(bookGlow);
+
+/* garden beyond the window: a painted world, not a flat lamp */
+const gardenView=new THREE.Mesh(new THREE.PlaneGeometry(3.2,4),
+  new THREE.MeshBasicMaterial({map:canvasTex(512,640,(x,w,h)=>{
+    const g=x.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#F0DCA0'); g.addColorStop(0.55,'#C8B878'); g.addColorStop(1,'#6A7A48');
+    x.fillStyle=g; x.fillRect(0,0,w,h);
+    let s=13; const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647;};
+    for(let i=0;i<30;i++){
+      const r=12+rnd()*44, px=rnd()*w, py=h*0.55+rnd()*h*0.45;
+      const rg=x.createRadialGradient(px,py,0,px,py,r);
+      const col=['#5A4470','#7A5FA0','#C29B4A','#8A9A50'][Math.floor(rnd()*4)];
+      rg.addColorStop(0,col+'88'); rg.addColorStop(1,col+'00');
+      x.fillStyle=rg; x.beginPath(); x.arc(px,py,r,0,7); x.fill();
+    }
+  })}));
+gardenView.position.set(-7.55,3.1,R1Z+2); gardenView.rotation.y=Math.PI/2; scene.add(gardenView);
+
+/* her words, hung in the sunlight */
+hangQuote('Stillness was not emptiness.', 0,4.9,R1Z+1, 0, 7.5, 0.26);
+/* the ants: a line of tiny gold pilgrims circling near the table...
+   worlds within worlds */
+const ANTN=26, antGeo=new THREE.BufferGeometry();
+antGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(ANTN*3),3));
+const ants=new THREE.Points(antGeo,new THREE.PointsMaterial({
+  color:0xC29B4A,size:0.035,map:dotTex,transparent:true,opacity:0.8,
+  blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(ants);
+function antStep(t){
+  const ap=ants.geometry.attributes.position;
+  for(let i=0;i<ANTN;i++){
+    const u=(t*0.045+i/ANTN)%1, a=u*Math.PI*2;
+    ap.setXYZ(i, 2.2+Math.cos(a)*(1.7+Math.sin(i*3.1)*0.12),
+                 0.045,
+                 R1Z+3.4+Math.sin(a)*(1.25+Math.cos(i*2.3)*0.1));
+  }
+  ap.needsUpdate=true;
+}
+
+/* fireflies in the window light */
+const FFN=10, ffGeo=new THREE.BufferGeometry();
+ffGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(FFN*3),3));
+const fireflies=new THREE.Points(ffGeo,new THREE.PointsMaterial({
+  color:0xFFE0A0,size:0.09,map:dotTex,transparent:true,opacity:0.9,
+  blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(fireflies);
+function fireflyStep(t){
+  const fp=fireflies.geometry.attributes.position;
+  for(let i=0;i<FFN;i++){
+    fp.setXYZ(i, -5.5+Math.sin(t*0.31+i*2.4)*1.6,
+                 2.6+Math.sin(t*0.43+i*1.7)*1.2,
+                 R1Z+2+Math.cos(t*0.27+i*3.1)*1.8);
+  }
+  fp.needsUpdate=true;
+  fireflies.material.opacity=0.55+Math.sin(t*1.8)*0.3;
+}
+
+/* pansy petals drifting in Room I */
+const petalGeo=new THREE.BufferGeometry();
+{
+  const n=isMobile?140:320, pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    pos[i*3]= (Math.random()-0.5)*13;
+    pos[i*3+1]= Math.random()*5.5+0.3;
+    pos[i*3+2]= R1Z+(Math.random()-0.5)*15;
+  }
+  petalGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+}
+const petals=new THREE.Points(petalGeo,new THREE.PointsMaterial({
+  color:0x9B7FC8,size:0.1,map:dotTex,transparent:true,opacity:0.65,
+  blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(petals);
+
+/* ── ROOM II: a room with windows · colder light ──────────── */
+const R2Z=-78;
+room({z:R2Z, w:15, d:17, h:6.6});
+const r2back=new THREE.Mesh(new THREE.PlaneGeometry(15,6.6),matWall);
+r2back.position.set(0,3.3,R2Z-8.4); scene.add(r2back);
+const r2text=new THREE.Mesh(new THREE.PlaneGeometry(12.5,6.2),
+  new THREE.MeshBasicMaterial({map:textTex(['A ROOM WITH','WINDOWS'],{size:225,italicLine:1}),
+    transparent:true, opacity:0.92, depthWrite:false}));
+r2text.position.set(0,3.35,R2Z-8.3); scene.add(r2text);
+
+/* three tall windows, cool light */
+for(let i=0;i<3;i++){
+  const wnd=new THREE.Mesh(new THREE.PlaneGeometry(1.7,4.2),
+    new THREE.MeshBasicMaterial({color:0x9FB4D8}));
+  wnd.position.set(7.4,3.4,R2Z+4.2-i*4.2); wnd.rotation.y=-Math.PI/2; scene.add(wnd);
+  const mull=new THREE.Mesh(new THREE.BoxGeometry(0.05,4.2,0.06),
+    new THREE.MeshStandardMaterial({color:0x1A1622}));
+  mull.position.set(7.38,3.4,R2Z+4.2-i*4.2); scene.add(mull);
+  lightShaft(6,3.2,R2Z+4.2-i*4.2, -Math.PI/2, 0xA8C0E8, 8, 2.2);
+}
+const r2cool=new THREE.PointLight(0xA8C4F0, 10, 24, 1.8); r2cool.position.set(5.5,3.8,R2Z); scene.add(r2cool);
+
+/* the television: a cold flicker in the corner */
+const tv=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.1),
+  new THREE.MeshBasicMaterial({color:0x8FA3C8}));
+tv.position.set(-6.9,1.6,R2Z-5); tv.rotation.y=Math.PI/2.4; scene.add(tv);
+const tvLight=new THREE.PointLight(0x8FA3C8, 3, 9, 2); tvLight.position.set(-6,1.8,R2Z-5); scene.add(tvLight);
+
+/* the glow-in-the-dark star, small and holy */
+const star=new THREE.Mesh(new THREE.IcosahedronGeometry(0.09,1),
+  new THREE.MeshStandardMaterial({color:0xCFF2C8,emissive:0xB8E8A8,emissiveIntensity:0.9}));
+star.position.set(0,4.6,R2Z-2); scene.add(star);
+const starLight=new THREE.PointLight(0xB8E8A8, 1.2, 6, 2); starLight.position.copy(star.position); scene.add(starLight);
+
+/* her words beside the star */
+hangQuote('I spoke to Jesus the way a child speaks to a friend.', 0,5.4,R2Z-1.5, 0, 8.5, 0.22, 76);
+
+hang('room2_window',['#1C2436','#2B2430'],['#8FA3C8','#BFD2F2','#5A4470'],
+      -7.35,3.2,R2Z+1.5, Math.PI/2, 2.4,3.2);
+hang('room2_star',  ['#141826','#241E2E'],['#BFF0B0','#8FA3C8','#C29B4A'],
+      -7.35,3.0,R2Z-3.2, Math.PI/2, 1.7,2.3);
+
+/* the unfinished door at the far end: dust still becoming a room */
+const lastDoor=doorway(2.5,3.7,0.65); lastDoor.position.set(0,0,-88); scene.add(lastDoor);
+const lastLight=new THREE.PointLight(COLORS.gold, 8, 14, 1.7); lastLight.position.set(0,2,-88.8); scene.add(lastLight);
+const BN=isMobile?60:140, buildGeo=new THREE.BufferGeometry();
+buildGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(BN*3),3));
+const builders=new THREE.Points(buildGeo,new THREE.PointsMaterial({
+  color:COLORS.gold,size:0.05,map:dotTex,transparent:true,opacity:0.85,
+  blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(builders);
+function builderStep(t){
+  const bp=builders.geometry.attributes.position;
+  for(let i=0;i<BN;i++){
+    const u=((t*0.05+i/BN)%1), a=i*2.399+t*0.15;   // golden-angle spiral, breathing inward
+    const r=(1-u)*3.2+0.15;
+    bp.setXYZ(i, Math.cos(a)*r*0.8, 1.9+Math.sin(a)*r*0.55, -88+Math.sin(u*Math.PI)*0.6);
+  }
+  bp.needsUpdate=true;
+}
+
+/* ambient dust everywhere */
+const dustGeo=new THREE.BufferGeometry();
+{
+  const n=isMobile?400:900, pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    pos[i*3]=(Math.random()-0.5)*20;
+    pos[i*3+1]=Math.random()*6;
+    pos[i*3+2]=-Math.random()*95;
+  }
+  dustGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+}
+const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({
+  color:0xD8CCB8,size:0.055,map:dotTex,transparent:true,opacity:0.38,
+  blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(dust);
+
+/* ══ CAMERA PATH ═══════════════════════════════════════════ */
+const PATH=[
+  {p:0.000, pos:[0,1.5,10.0], look:[0,3.6,-12]},                  // in the mist, title above the door
+  {p:0.055, pos:[0,1.7, 1.5], look:[0,2.2,-12]},                  // approach, title drifts overhead
+  {p:0.095, pos:[0,1.8,-10.2], look:[0,1.9,-24]},                 // through the door
+  {p:0.135, pos:[0,1.8,-19.0], look:[0,2.0,-30]},                 // vestibule (Note)
+  {p:0.235, pos:[0,1.8,-27.0], look:[0,2.0,-40]},                 // leaving vestibule
+  {p:0.300, pos:[0,1.9,-38.0], look:[0.6,2.0,-50]},               // corridor drift
+  {p:0.345, pos:[0,1.9,-49.0], look:[0,2.6,-58]},                 // Room I threshold
+  {p:0.385, pos:[0,1.9,-52.5], look:[0,3.2,-66.3]},               // face the wall text
+  {p:0.430, pos:[-2.5,1.8,-55.0], look:[-7.4,3.0,-56]},           // toward the window
+  {p:0.520, pos:[1.0,1.7,-56.5], look:[2.2,1.2,-54.6]},           // to the book
+  {p:0.600, pos:[3.2,1.9,-60.0], look:[7.35,3.0,-59]},            // the paintings
+  {p:0.640, pos:[0,1.9,-66.0], look:[0,2.0,-78]},                 // door to Room II
+  {p:0.690, pos:[0,1.9,-71.5], look:[0,3.3,-86.3]},               // Room II wall text
+  {p:0.740, pos:[2.5,1.9,-74.0], look:[7.4,3.4,-78]},             // the windows
+  {p:0.830, pos:[-1.5,1.8,-77.0], look:[-6.9,1.7,-83]},           // tv corner
+  {p:0.900, pos:[0,1.6,-79.0], look:[0,4.6,-80]},                 // look up at the star
+  {p:0.955, pos:[0,1.8,-82.0], look:[0,2.0,-88]},                 // toward last door
+  {p:1.000, pos:[0,1.8,-85.5], look:[0,2.0,-89]}                  // rest before it
+];
+const V=(a)=>new THREE.Vector3(a[0],a[1],a[2]);
+const smooth=(t)=>t*t*(3-2*t);
+function sampleCam(p, out){
+  let i=0; while(i<PATH.length-2 && PATH[i+1].p<p) i++;
+  const a=PATH[i], b=PATH[i+1];
+  const t=smooth(THREE.MathUtils.clamp((p-a.p)/(b.p-a.p||1),0,1));
+  out.pos.copy(V(a.pos)).lerp(V(b.pos),t);
+  out.look.copy(V(a.look)).lerp(V(b.look),t);
+}
+
+/* fog + light moods per progress; readerDim hushes the room while you read */
+let readerDim=0;
+function mood(p){
+  if(p<0.10){ scene.fog.density=0.055; bloom.strength=0.55; amb.intensity=0.5; }
+  else if(p<0.30){ scene.fog.density=0.045; bloom.strength=0.5; amb.intensity=0.42; }
+  else if(p<0.64){ scene.fog.density=0.028; bloom.strength=0.62; amb.intensity=0.55; } // warm Room I
+  else if(p<0.95){ scene.fog.density=0.032; bloom.strength=0.5; amb.intensity=0.45; }  // cool Room II
+  else { scene.fog.density=0.05; bloom.strength=0.8; amb.intensity=0.4; }
+  bloom.strength*=(1-0.6*readerDim);
+  amb.intensity*=(1-0.35*readerDim);
+  renderer.toneMappingExposure=1.05-0.4*readerDim;
+}
+
+/* ══ OVERLAY SCHEDULE ══════════════════════════════════════
+   fixed DOM layers faded in/out on progress; readers also
+   translate their long text as you move through the range   */
+const OVERLAYS=[
+  {el:'t-cover',     a:0.000, b:0.060},
+  {el:'t-threshold', a:0.070, b:0.105},
+  {el:'r-note',      a:0.125, b:0.235, read:true},
+  {el:'t-room1',     a:0.345, b:0.400},
+  {el:'r-room1',     a:0.415, b:0.630, read:true},
+  {el:'t-room2',     a:0.685, b:0.735},
+  {el:'r-room2',     a:0.748, b:0.945, read:true},
+  {el:'t-end',       a:0.958, b:1.000}
+].map(o=>({...o, node:document.getElementById(o.el),
+  flow:document.querySelector('#'+o.el+' .flow')}));
+
+const ROOMNAMES=[
+  [0.00,'outside'],[0.09,'the threshold'],[0.125,'a note before this story begins'],
+  [0.24,'the corridor'],[0.345,'room i · the first room'],
+  [0.64,'between rooms'],[0.685,'room ii · a room with windows'],
+  [0.955,'the unfinished door']
+];
+
+/* ══ SCROLL + RENDER LOOP ══════════════════════════════════ */
+gsap.registerPlugin(ScrollTrigger);
+const lenis=new Lenis({duration:1.55, smoothWheel:true});
+lenis.on('scroll',ScrollTrigger.update);
+
+let progress=0, camCur={pos:new THREE.Vector3(0,1.7,6), look:new THREE.Vector3(0,2.6,-12)};
+const camTarget={pos:new THREE.Vector3(), look:new THREE.Vector3()};
+
+ScrollTrigger.create({
+  trigger:document.body, start:0, end:()=>document.body.scrollHeight-innerHeight,
+  onUpdate(self){ progress=self.progress; }
+});
+
+const roomNameEl=document.getElementById('room-name');
+const progressEl=document.getElementById('progress');
+let lastRoom='';
+
+function updateOverlays(p){
+  let dim=0;
+  for(const o of OVERLAYS){
+    const inRange=p>=o.a&&p<=o.b;
+    const edge=Math.min((p-o.a),(o.b-p))/(o.b-o.a);
+    const op=inRange?Math.min(1,edge*6):0;
+    if(o.read) dim=Math.max(dim,op);
+    o.node.style.opacity=op;
+    o.node.classList.toggle('active',inRange&&op>0.5);
+    if(o.read&&inRange){
+      const page=o.node.querySelector('.page');
+      const t=(p-o.a)/(o.b-o.a);
+      const travel=Math.max(0,o.flow.scrollHeight-page.clientHeight*0.92);
+      o.flow.style.transform=`translateY(${-t*travel}px)`;
+    }
+  }
+  let name=ROOMNAMES[0][1];
+  for(const [rp,rn] of ROOMNAMES) if(p>=rp) name=rn;
+  if(name!==lastRoom){ lastRoom=name;
+    roomNameEl.style.opacity=0;
+    setTimeout(()=>{roomNameEl.textContent=name; roomNameEl.style.opacity=1;},400);
+  }
+  progressEl.style.width=(Math.max(0,p)*100)+'%';
+  readerDim+= (dim-readerDim)*0.08;
+}
+
+/* ── WANDER MODE (WASD free-roam) ─────────────────────────── */
+let wandering=false;
+const keys={}; let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const wpos=new THREE.Vector3();
+addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Escape'&&wandering) toggleWander();
+  if(e.code==='KeyW'&&!wandering&&!e.repeat&&document.activeElement===document.body){} // reserved
+});
+addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(!wandering)return; dragging=true; lx=e.clientX; ly=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{
+  if(!wandering||!dragging)return;
+  yaw-=(e.clientX-lx)*0.0035; pitch-=(e.clientY-ly)*0.0028;
+  pitch=THREE.MathUtils.clamp(pitch,-1.2,1.2); lx=e.clientX; ly=e.clientY;});
+
+const wanderBtn=document.getElementById('wander-btn');
+function toggleWander(){
+  wandering=!wandering;
+  document.body.classList.toggle('wandering',wandering);
+  wanderBtn.textContent=wandering?'Return to the story':'Wander the house';
+  if(wandering){
+    lenis.stop();
+    wpos.copy(camCur.pos);
+    const d=new THREE.Vector3().subVectors(camCur.look,camCur.pos);
+    yaw=Math.atan2(-d.x,-d.z); pitch=Math.asin(THREE.MathUtils.clamp(d.y/d.length(),-1,1));
+  } else lenis.start();
+}
+wanderBtn.addEventListener('click',toggleWander);
+
+function wanderStep(dt){
+  const sp=(keys['ShiftLeft']?7:3.6)*dt;
+  const f=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+  const r=new THREE.Vector3(f.z,0,-f.x);
+  if(keys['KeyW'])wpos.addScaledVector(f,sp);
+  if(keys['KeyS'])wpos.addScaledVector(f,-sp);
+  if(keys['KeyA'])wpos.addScaledVector(r,-sp);
+  if(keys['KeyD'])wpos.addScaledVector(r,sp);
+  wpos.x=THREE.MathUtils.clamp(wpos.x,-7,7);
+  wpos.z=THREE.MathUtils.clamp(wpos.z,-88,8);
+  wpos.y=1.7;
+  camera.position.copy(wpos);
+  camera.rotation.set(0,0,0);
+  camera.rotateY(yaw); camera.rotateX(pitch);
+}
+
+/* ── MEMORY: the house remembers where you are ────────────── */
+const MEMKEY='momoHouseMemory_v1';
+function saveMemory(){ try{
+  localStorage.setItem(MEMKEY, JSON.stringify({p:progress, t:Date.now(), room:lastRoom}));
+}catch(e){} }
+setInterval(saveMemory,2500);
+addEventListener('beforeunload',saveMemory);
+function restoreMemory(){
+  try{
+    const m=JSON.parse(localStorage.getItem(MEMKEY)||'null');
+    if(m&&m.p>0.03){
+      const y=m.p*(document.body.scrollHeight-innerHeight);
+      lenis.scrollTo(y,{immediate:true}); progress=m.p;
+      const toast=document.getElementById('toast');
+      toast.textContent=`welcome back... the house remembers you were in ${m.room}`;
+      setTimeout(()=>toast.classList.add('show'),1800);
+      setTimeout(()=>toast.classList.remove('show'),7500);
+    }
+  }catch(e){}
+}
+
+/* ── main loop ────────────────────────────────────────────── */
+const clock=new THREE.Clock();
+function tick(){
+  requestAnimationFrame(tick);
+  const dt=Math.min(clock.getDelta(),0.05), t=clock.elapsedTime;
+  lenis.raf(t*1000);
+
+  if(wandering){ wanderStep(dt); }
+  else{
+    sampleCam(progress,camTarget);
+    camCur.pos.lerp(camTarget.pos,1-Math.pow(0.001,dt));
+    camCur.look.lerp(camTarget.look,1-Math.pow(0.001,dt));
+    camera.position.copy(camCur.pos);
+    /* breath: the house is alive */
+    camera.position.y+=Math.sin(t*0.9)*0.025;
+    camera.position.x+=Math.sin(t*0.6)*0.02;
+    camera.lookAt(camCur.look);
+  }
+  mood(progress);
+  updateOverlays(wandering?-1:progress);
+
+  /* living details */
+  title.material.opacity=THREE.MathUtils.clamp(1-progress*14,0,1);
+  title.position.y=6.6+Math.sin(t*0.5)*0.15;
+  book.rotation.y=0.5+Math.sin(t*0.4)*0.06;
+  book.position.y=1.1+Math.sin(t*0.8)*0.02;
+  star.position.y=4.6+Math.sin(t*1.1)*0.08;
+  star.rotation.y=t*0.6; starLight.position.copy(star.position);
+  starLight.intensity=1.1+Math.sin(t*2.3)*0.25;
+  tvLight.intensity=2.2+Math.sin(t*11)*0.8+Math.sin(t*23)*0.5;
+  tv.material.color.setScalar(0.55+Math.sin(t*13)*0.15);
+  scene.traverse(o=>{ if(o.userData.float){
+    o.position.y+=Math.sin(t*1.3+o.userData.float.a)*0.0012; }});
+  /* drift particles */
+  const pp=petals.geometry.attributes.position;
+  for(let i=0;i<pp.count;i++){
+    let y=pp.getY(i)-dt*0.12; if(y<0.2)y=5.8;
+    pp.setY(i,y); pp.setX(i,pp.getX(i)+Math.sin(t*0.7+i)*0.0016);
+  }
+  pp.needsUpdate=true;
+  dust.rotation.y=Math.sin(t*0.05)*0.02;
+  antStep(t); fireflyStep(t); builderStep(t);
+  /* a breath of roll in the corridor, like leaning through a dream */
+  if(!wandering){
+    const roll=(progress>0.24&&progress<0.35)?Math.sin(t*0.5)*0.012:Math.sin(t*0.33)*0.004;
+    camera.rotateZ(roll);
+  }
+
+  composer.render();
+}
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight);
+});
+
+/* ── enter ────────────────────────────────────────────────── */
+tick();
+setTimeout(()=>{
+  document.getElementById('loader').classList.add('gone');
+  restoreMemory();
+  const hint=document.getElementById('hint');
+  hint.style.opacity=1;
+  setTimeout(()=>hint.style.opacity=0,6000);
+},2400);
+</script>
+</body>
+</html>

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Quiet Rooms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --parchment:#e9e1cd;
+    --parchment-dim:rgba(233,225,205,.55);
+    --parchment-faint:rgba(233,225,205,.3);
+    --gold:#c69d4d;
+    --gold-soft:rgba(198,157,77,.55);
+    --moss:#94a37d;
+    --ink:#0a0d13;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:auto}
+  body{
+    background:var(--ink);
+    color:var(--parchment);
+    font-family:'EB Garamond',Georgia,serif;
+    font-size:19px;line-height:1.85;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:rgba(198,157,77,.25)}
+
+  /* ═══ the world behind everything ═══ */
+  #world{position:fixed;inset:0;z-index:0;display:block}
+  #grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.05;mix-blend-mode:overlay}
+  .vignette{position:fixed;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgba(4,6,10,.55) 100%)}
+
+  /* ═══ editorial layer ═══ */
+  main{position:relative;z-index:3}
+  section.room{
+    min-height:200vh;
+    position:relative;
+    padding:0 clamp(20px,6vw,110px);
+  }
+  .room-inner{
+    position:sticky;top:0;
+    min-height:100vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:12vh 0;
+  }
+
+  /* oversized editorial display */
+  .display{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:300;
+    font-size:clamp(56px,11vw,170px);
+    line-height:.98;
+    letter-spacing:-.01em;
+    color:var(--parchment);
+  }
+  .display .thin{font-style:italic;color:var(--gold)}
+  .outline{
+    -webkit-text-stroke:1px rgba(233,225,205,.28);
+    color:transparent;
+  }
+  .eyebrow{
+    font-family:'EB Garamond',serif;
+    font-size:clamp(12px,1.1vw,15px);
+    letter-spacing:.5em;text-transform:uppercase;
+    color:var(--gold-soft);
+    margin-bottom:3.5vh;
+  }
+  .whisper{
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;font-weight:300;
+    font-size:clamp(23px,2.9vw,34px);
+    line-height:1.75;
+    max-width:21em;
+    color:var(--parchment);
+  }
+  .body-col{
+    max-width:34em;font-size:clamp(17px,1.4vw,20px);
+    color:var(--parchment-dim);
+  }
+  .mirror-line{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
+    font-size:clamp(22px,2.8vw,31px);line-height:1.85;
+    color:var(--gold);max-width:20em;
+    text-shadow:0 0 34px rgba(198,157,77,.2);
+  }
+  .right{margin-left:auto;text-align:right}
+  .center{margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center}
+
+  /* parallax drift layers */
+  [data-drift]{will-change:transform}
+
+  /* quiet controls */
+  .door-word{
+    background:none;cursor:pointer;
+    font-family:'EB Garamond',serif;
+    font-size:16px;letter-spacing:.24em;
+    color:var(--parchment-dim);
+    padding:14px 32px;
+    border:1px solid rgba(233,225,205,.16);
+    border-radius:999px;
+    transition:color 1.4s ease,border-color 1.4s ease,background 1.4s ease;
+  }
+  .door-word:hover,.door-word:focus-visible{
+    color:var(--parchment);border-color:var(--gold-soft);
+    background:rgba(198,157,77,.06);outline:none;
+  }
+  .pool-writing,.tend-area,.journal-area{
+    width:100%;background:none;border:none;outline:none;resize:none;
+    font-family:'Cormorant Garamond',serif;font-style:italic;
+    font-size:clamp(20px,2.4vw,26px);line-height:1.95;
+    color:var(--parchment);caret-color:var(--gold);
+    transition:filter 3.5s ease,opacity 3.5s ease,letter-spacing 3.5s ease;
+  }
+  .pool-writing{text-align:center;min-height:5em}
+  .pool-writing::placeholder,.tend-area::placeholder,.journal-area::placeholder,
+  .seed-input::placeholder,.candle-input::placeholder{color:rgba(233,225,205,.24);font-style:italic}
+  .pool-writing.dissolving{filter:blur(8px);opacity:0;letter-spacing:.32em;pointer-events:none}
+  .seed-input,.candle-input{
+    width:100%;background:none;border:none;outline:none;
+    border-bottom:1px solid rgba(233,225,205,.18);
+    font-family:'Cormorant Garamond',serif;font-style:italic;
+    font-size:clamp(20px,2.4vw,26px);line-height:1.8;
+    color:var(--parchment);text-align:center;padding:8px 4px;caret-color:var(--gold);
+    transition:border-color 1.4s ease;
+  }
+  .seed-input:focus,.candle-input:focus{border-color:var(--gold-soft)}
+  .small-voice{font-size:15px;letter-spacing:.16em;color:var(--parchment-faint)}
+  .vgap-s{height:2.4vh}.vgap-m{height:4.5vh}.vgap-l{height:8vh}
+  .hidden{display:none !important}
+
+  /* plant svg */
+  #plant-svg{width:min(240px,52vw);height:auto}
+  .plant-line{stroke:var(--moss);stroke-width:2.4;fill:none;stroke-linecap:round}
+  .plant-leaf{fill:rgba(148,163,125,.85)}
+  .plant-bloom{fill:var(--gold);opacity:.9}
+  .seed-dot{fill:#a8977a}
+
+  /* threshold */
+  #threshold .room-inner{align-items:center;text-align:center;justify-content:center}
+  #scroll-hint{
+    position:absolute;bottom:5vh;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:12px;
+    opacity:0;animation:hintIn 3s ease 6s forwards;
+  }
+  @keyframes hintIn{to{opacity:1}}
+  .hint-line{width:1px;height:56px;background:linear-gradient(var(--gold-soft),transparent);
+    animation:hintDrift 4.5s ease-in-out infinite}
+  @keyframes hintDrift{0%,100%{transform:scaleY(.5);transform-origin:top;opacity:.4}50%{transform:scaleY(1);opacity:1}}
+
+  /* the keeper's book */
+  #book-toggle{
+    position:fixed;right:26px;bottom:26px;z-index:20;
+    width:52px;height:52px;border-radius:50%;
+    background:rgba(10,13,19,.55);backdrop-filter:blur(6px);
+    border:1px solid rgba(198,157,77,.35);
+    color:var(--gold);cursor:pointer;
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px;
+    transition:border-color 1s ease,box-shadow 1s ease;
+  }
+  #book-toggle:hover{border-color:var(--gold);box-shadow:0 0 30px rgba(198,157,77,.15)}
+  #book{
+    position:fixed;inset:0;z-index:30;overflow-y:auto;
+    background:rgba(7,9,13,.92);backdrop-filter:blur(14px);
+    opacity:0;visibility:hidden;transition:opacity 1.4s ease,visibility 0s linear 1.4s;
+    padding:12vh clamp(24px,10vw,160px);
+  }
+  #book.open{opacity:1;visibility:visible;transition:opacity 1.4s ease}
+  .book-entry{
+    border-left:1px solid rgba(198,157,77,.3);
+    padding:6px 0 6px 26px;margin-bottom:6vh;max-width:38em;
+  }
+  .book-entry .small-voice{display:block;margin-bottom:1.2vh}
+  .book-entry p{font-family:'Cormorant Garamond',serif;font-style:italic;
+    font-size:clamp(19px,2vw,24px);line-height:1.9}
+  #book-close{position:fixed;top:26px;right:32px;z-index:31;background:none;border:none;
+    color:var(--parchment-dim);font-family:'EB Garamond',serif;letter-spacing:.3em;
+    font-size:14px;cursor:pointer;display:none}
+  #book.open ~ #book-close{display:block}
+
+  .listening{display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--gold-soft);animation:pulse 4.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.6);opacity:1}}
+
+  @media (max-width:720px){
+    .right{margin-left:0;text-align:left}
+    section.room{min-height:170vh}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="world"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<canvas id="grain" aria-hidden="true"></canvas>
+
+<main>
+
+  <!-- ═══════ 0 · THRESHOLD ═══════ -->
+  <section class="room" id="threshold" data-room="0">
+    <div class="room-inner">
+      <p class="eyebrow" data-drift="0.15">a sanctuary, not an app</p>
+      <h1 class="display" data-drift="0.05">The Quiet<br><span class="thin">Rooms</span></h1>
+      <div class="vgap-m"></div>
+      <p class="whisper" data-drift="0.22" style="text-align:center">You have arrived. There is nothing to do here.<br>There is nowhere to hurry to.</p>
+      <div class="vgap-s"></div>
+      <p class="small-voice" data-drift="0.28">walk by scrolling, or with W and S · the rooms will come to you</p>
+      <div class="vgap-s"></div>
+      <p class="small-voice" data-drift="0.3" style="color:var(--parchment-faint)">nothing you write here is sent anywhere, seen by anyone, or asked of you ·<br>what you keep stays only with you, on this device, in this quiet</p>
+    </div>
+    <div id="scroll-hint"><span class="small-voice">begin walking</span><span class="hint-line"></span></div>
+  </section>
+
+  <!-- ═══════ I · WATER ═══════ -->
+  <section class="room" id="water" data-room="1">
+    <div class="room-inner">
+      <p class="eyebrow" data-drift="0.1">room i · reflection</p>
+      <h2 class="display" data-drift="0.04">The <span class="thin">Water</span><br><span class="outline">Room</span></h2>
+      <div class="vgap-l"></div>
+      <div class="center" style="width:min(640px,100%)" data-drift="0.18">
+        <p class="whisper" id="water-question">What have you brought with you today?</p>
+        <div class="vgap-m"></div>
+        <textarea class="pool-writing" id="pool" rows="4" placeholder="write here, as much or as little as you carry…"></textarea>
+        <div class="vgap-s"></div>
+        <button class="door-word" id="lay-down">lay it on the water</button>
+        <div id="water-answer" class="hidden center">
+          <span class="listening" id="water-listening"></span>
+          <div class="vgap-m"></div>
+          <p class="mirror-line" id="mirror-line"></p>
+          <div class="vgap-m"></div>
+          <p class="whisper" id="second-question" style="font-size:clamp(19px,2.2vw,25px);color:var(--parchment-dim)"></p>
+          <div class="vgap-m"></div>
+          <button class="door-word hidden" id="water-again">sit by the water a while longer</button>
+        </div>
+        <div class="vgap-s"></div>
+        <p class="small-voice">what you lay on the water is carried away · it is not kept</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ II · SEED ═══════ -->
+  <section class="room" id="seed" data-room="2">
+    <div class="room-inner">
+      <p class="eyebrow right" data-drift="0.1">room ii · what is yours alone</p>
+      <h2 class="display right" data-drift="0.04"><span class="outline">The</span> Seed<br><span class="thin">Room</span></h2>
+      <div class="vgap-l"></div>
+      <div class="center" style="width:min(600px,100%)" data-drift="0.18">
+        <div id="planting" class="hidden center" style="width:100%">
+          <p class="whisper">This earth is yours. No one else can see it.<br><span style="font-size:.8em;color:var(--parchment-dim)">What are you planting?</span></p>
+          <div class="vgap-m"></div>
+          <input class="seed-input" id="seed-name" maxlength="140" placeholder="name it in your own words…">
+          <div class="vgap-m"></div>
+          <button class="door-word" id="plant-btn">plant it</button>
+        </div>
+        <div id="tending" class="hidden center" style="width:100%">
+          <svg id="plant-svg" viewBox="0 0 200 220" aria-hidden="true"></svg>
+          <div class="vgap-s"></div>
+          <p class="whisper" id="seed-title" style="color:var(--parchment-dim);font-size:clamp(20px,2.4vw,27px)"></p>
+          <p class="small-voice" id="seed-age" style="margin-top:1.4vh"></p>
+          <div class="vgap-m"></div>
+          <p class="whisper" id="tend-question" style="font-size:clamp(19px,2.2vw,25px)">What has changed since you planted this?</p>
+          <div class="vgap-s"></div>
+          <textarea class="tend-area" id="tend-words" rows="3" style="text-align:center" placeholder="your words are the water…"></textarea>
+          <div class="vgap-s"></div>
+          <button class="door-word" id="tend-btn">water it</button>
+          <div id="tend-answer" class="hidden center">
+            <div class="vgap-m"></div>
+            <p class="mirror-line" id="tend-mirror" style="font-size:clamp(19px,2.2vw,26px)"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ III · CANDLE ═══════ -->
+  <section class="room" id="candle" data-room="3">
+    <div class="room-inner">
+      <p class="eyebrow" data-drift="0.1">room iii · grief and prayer</p>
+      <h2 class="display" data-drift="0.04">The <span class="thin">Candle</span><br><span class="outline">Room</span></h2>
+      <div class="vgap-l"></div>
+      <div class="center" style="width:min(560px,100%)" data-drift="0.18">
+        <p class="whisper">Some things are not problems to solve.<br><span style="font-size:.82em;color:var(--parchment-dim)">They are lights to keep burning.</span></p>
+        <div class="vgap-m"></div>
+        <input class="candle-input" id="candle-name" maxlength="120" placeholder="light a candle for someone, or something…">
+        <div class="vgap-m"></div>
+        <button class="door-word" id="candle-btn">light it</button>
+        <div class="vgap-m"></div>
+        <p class="small-voice" id="candle-count"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ IV · LIBRARY ═══════ -->
+  <section class="room" id="library" data-room="4">
+    <div class="room-inner">
+      <p class="eyebrow right" data-drift="0.1">room iv · wisdom and poetry</p>
+      <h2 class="display right" data-drift="0.04"><span class="outline">The</span> Library<br><span class="thin">Room</span></h2>
+      <div class="vgap-l"></div>
+      <div class="center" style="width:min(640px,100%)" data-drift="0.16">
+        <p class="mirror-line" id="library-line" style="color:var(--parchment)"></p>
+        <div class="vgap-s"></div>
+        <p class="small-voice" id="library-source"></p>
+        <div class="vgap-m"></div>
+        <button class="door-word" id="library-btn">turn the page</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ V · WRITING ═══════ -->
+  <section class="room" id="writing" data-room="5">
+    <div class="room-inner">
+      <p class="eyebrow" data-drift="0.1">room v · inner listening</p>
+      <h2 class="display" data-drift="0.04">The <span class="thin">Writing</span><br><span class="outline">Room</span></h2>
+      <div class="vgap-l"></div>
+      <div style="width:min(680px,100%);margin:0 auto" data-drift="0.16">
+        <p class="whisper">Here, what you write is kept.<br><span style="font-size:.8em;color:var(--parchment-dim)">The Keeper's Book holds every page you choose to keep.</span></p>
+        <div class="vgap-m"></div>
+        <textarea class="journal-area" id="journal-words" rows="6" placeholder="begin anywhere… the page is patient…"></textarea>
+        <div class="vgap-s"></div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap">
+          <button class="door-word" id="journal-keep">keep this page</button>
+        </div>
+        <div class="vgap-s"></div>
+        <p class="small-voice" id="journal-note"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ VI · DAWN ═══════ -->
+  <section class="room" id="dawn" data-room="6" style="min-height:160vh">
+    <div class="room-inner" style="align-items:center;text-align:center">
+      <p class="eyebrow" data-drift="0.1">room vi · beginning again</p>
+      <h2 class="display" data-drift="0.04"><span class="thin">Dawn</span></h2>
+      <div class="vgap-m"></div>
+      <p class="whisper" data-drift="0.16">You arrived carrying something.<br>Leave carrying a little less.</p>
+      <div class="vgap-l"></div>
+      <button class="door-word" id="return-btn">return to the threshold</button>
+    </div>
+  </section>
+
+</main>
+
+<button id="book-toggle" title="The Keeper's Book" aria-label="Open the Keeper's Book">✦</button>
+<div id="book" aria-label="The Keeper's Book">
+  <p class="eyebrow">the keeper's book</p>
+  <h2 class="display" style="font-size:clamp(44px,7vw,110px)">What you<br><span class="thin">chose to keep</span></h2>
+  <div class="vgap-l"></div>
+  <div id="book-entries"></div>
+</div>
+<button id="book-close">close the book</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<script>
+/* ═══════════════════ the quiet machinery ═══════════════════ */
+const $=s=>document.querySelector(s);
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+gsap.registerPlugin(ScrollTrigger);
+
+/* ───────── film grain ───────── */
+(function grain(){
+  const c=$('#grain'),g=c.getContext('2d');
+  function size(){c.width=innerWidth/2;c.height=innerHeight/2}
+  size();addEventListener('resize',size);
+  function draw(){
+    const d=g.createImageData(c.width,c.height);
+    for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;
+      d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=26}
+    g.putImageData(d,0,0);
+  }
+  draw();if(!reduced)setInterval(draw,120);
+})();
+
+/* ───────── soft bell ───────── */
+let actx=null,lastBell=0;
+function bell(vol=1){
+  const now=Date.now();if(now-lastBell<4000)return;lastBell=now;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume();
+    const t=actx.currentTime;
+    [523.25,784].forEach((f,i)=>{
+      const o=actx.createOscillator(),g=actx.createGain();
+      o.type='sine';o.frequency.value=f;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime((i?0.01:0.024)*vol,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+4.5);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+5);
+    });
+  }catch(e){}
+}
+
+/* ───────── storage (the sanctuary remembers, wherever it lives) ─────────
+   1. Claude's shelf (window.storage) when the sanctuary runs inside Claude
+   2. the browser's own quiet memory (localStorage) when it lives on a computer
+   3. this sitting only, if neither home exists */
+const mem={};
+const store={
+  async get(k){
+    if(window.storage){try{const r=await window.storage.get(k);return r?r.value:null}catch(e){}}
+    try{const v=localStorage.getItem(k);if(v!==null)return v}catch(e){}
+    return mem[k]||null;
+  },
+  async set(k,v){
+    if(window.storage){try{await window.storage.set(k,v)}catch(e){}}
+    try{localStorage.setItem(k,v)}catch(e){}
+    mem[k]=v;
+  }
+};
+async function getJSON(k,fb){const r=await store.get(k);if(!r)return fb;try{return JSON.parse(r)}catch(e){return fb}}
+
+/* ───────── the gentle mirror · public sanctuary edition ─────────
+   Nothing a visitor writes is ever sent anywhere. The water listens
+   locally and answers from its own small book of quiet lines. */
+const WATER_LINES=[
+  "Underneath all of this, I hear something that has been carried a long way.",
+  "Beneath these words, something is asking to be set down, not solved.",
+  "The water hears more weight than words. It can hold both.",
+  "Underneath all of this, I hear a longing for rest.",
+  "Whatever this is, it has been heavy. It is allowed to float now.",
+  "Beneath these words, something tender is still intact.",
+  "The water does not need this explained. It only needed it brought."
+];
+const TEND_LINES=[
+  "The earth has taken your words. Nothing more is asked of you tonight.",
+  "Roots do their work in the dark. So does this.",
+  "What you just said is water enough.",
+  "The seed heard you. Growing is its answer.",
+  "Quietly, something beneath the surface is different now."
+];
+let waterIdx=Math.floor(Math.random()*WATER_LINES.length);
+let tendIdx=Math.floor(Math.random()*TEND_LINES.length);
+async function mirror(text,guide){
+  await new Promise(r=>setTimeout(r,reduced?300:2400)); /* the water takes its time */
+  if(guide===TEND_GUIDE)return TEND_LINES[(tendIdx++)%TEND_LINES.length];
+  return WATER_LINES[(waterIdx++)%WATER_LINES.length];
+}
+const MIRROR_GUIDE=`You are the voice of a quiet sanctuary called The Quiet Rooms. A visitor has laid words on the water. Reply with EXACTLY ONE short sentence (under 22 words) that gently mirrors what lives underneath their words. Rules: never give advice, never fix, never use therapy or wellness language, never use the words "journey", "self-care", "mindful", or "valid". No em dashes. Speak like still water: plain, warm, unhurried, slightly poetic. Often begin with "Underneath all of this, I hear..." or "Beneath these words..." or similar, but vary naturally. Do not ask a question. Reply with the sentence only, nothing else.`;
+const TEND_GUIDE=`You are the voice of the Seed Room in a quiet sanctuary. The visitor planted a seed some days ago, named in their own words, and has returned to tend it. Reply with EXACTLY ONE short sentence (under 20 words) that quietly receives what they said, as earth receives water. Never advise, never fix, never praise, never use wellness or therapy language, never use the word "journey". No em dashes. No questions. Plain, warm, unhurried. Reply with the sentence only.`;
+
+/* ═══════════════════ THE WORLD · three.js ═══════════════════ */
+const canvas=$('#world');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
+renderer.setSize(innerWidth,innerHeight);
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x0a0d13,0.055);
+const camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,0.1,220);
+camera.position.set(0,1.7,6);
+
+/* glow sprite texture, painted by hand */
+function glowTexture(inner='rgba(255,240,210,1)',outer='rgba(255,200,120,0)'){
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const g=c.getContext('2d');
+  const grad=g.createRadialGradient(64,64,2,64,64,64);
+  grad.addColorStop(0,inner);grad.addColorStop(.25,inner.replace('1)','0.5)'));
+  grad.addColorStop(1,outer);
+  g.fillStyle=grad;g.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+}
+const glowTex=glowTexture();
+const coolGlowTex=glowTexture('rgba(210,230,255,1)','rgba(140,180,255,0)');
+
+/* lighting */
+const ambient=new THREE.AmbientLight(0x223044,1.2);scene.add(ambient);
+const moonlight=new THREE.DirectionalLight(0x9db4d6,0.9);
+moonlight.position.set(6,14,4);scene.add(moonlight);
+const walkLight=new THREE.PointLight(0xc69d4d,1.1,26,2);scene.add(walkLight);
+
+/* ── room anchors along the corridor (z) ── */
+const R={threshold:0,water:-24,seed:-48,candle:-72,library:-96,writing:-120,dawn:-144};
+
+/* ── atmosphere particles: gold dust through the whole corridor ── */
+(function dust(){
+  const n=900,geo=new THREE.BufferGeometry(),pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    pos[i*3]=(Math.random()-0.5)*34;
+    pos[i*3+1]=Math.random()*9;
+    pos[i*3+2]=6-Math.random()*160;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const mat=new THREE.PointsMaterial({size:.09,map:glowTex,transparent:true,
+    opacity:.55,color:0xc69d4d,depthWrite:false,blending:THREE.AdditiveBlending});
+  const pts=new THREE.Points(geo,mat);pts.name='dust';scene.add(pts);
+})();
+
+/* ── stars far above ── */
+(function stars(){
+  const n=400,geo=new THREE.BufferGeometry(),pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    pos[i*3]=(Math.random()-0.5)*220;pos[i*3+1]=18+Math.random()*50;pos[i*3+2]=20-Math.random()*220;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(geo,new THREE.PointsMaterial({size:.35,map:coolGlowTex,
+    transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending})));
+})();
+
+/* ── the moon ── */
+const moon=new THREE.Sprite(new THREE.SpriteMaterial({map:coolGlowTex,transparent:true,opacity:.85,depthWrite:false}));
+moon.scale.set(10,10,1);moon.position.set(14,17,R.water-30);scene.add(moon);
+
+/* ── threshold: a breathing flame ── */
+const flame=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+flame.position.set(0,1.9,R.threshold-6);flame.scale.set(1.4,1.4,1);scene.add(flame);
+
+/* ── stone path underfoot, the whole way ── */
+(function path(){
+  const stoneMat=new THREE.MeshStandardMaterial({color:0x2a2f38,roughness:.95,metalness:0});
+  for(let z=2;z>-150;z-=2.4){
+    const s=new THREE.Mesh(new THREE.CylinderGeometry(.9+Math.random()*.5,.9,.14,7),stoneMat);
+    s.position.set(Math.sin(z*.35)*1.1,-0.05,z+Math.random()*.5);
+    s.rotation.y=Math.random()*Math.PI;
+    scene.add(s);
+  }
+})();
+
+/* ── WATER ROOM: a living pool ── */
+const waterGeo=new THREE.PlaneGeometry(60,44,110,70);
+const waterMat=new THREE.MeshStandardMaterial({color:0x14344a,roughness:.25,metalness:.55,
+  transparent:true,opacity:.92,side:THREE.DoubleSide});
+const water=new THREE.Mesh(waterGeo,waterMat);
+water.rotation.x=-Math.PI/2;water.position.set(0,-0.35,R.water-8);scene.add(water);
+const waterBase=waterGeo.attributes.position.array.slice();
+/* floating stones above the water */
+const floaters=[];
+(function floatStones(){
+  const m=new THREE.MeshStandardMaterial({color:0x3a4250,roughness:.8});
+  for(let i=0;i<7;i++){
+    const s=new THREE.Mesh(new THREE.IcosahedronGeometry(.35+Math.random()*.5,0),m);
+    s.position.set((Math.random()-0.5)*14,1.2+Math.random()*2.6,R.water-6-Math.random()*12);
+    s.userData={ph:Math.random()*6,sp:.3+Math.random()*.4};
+    floaters.push(s);scene.add(s);
+  }
+})();
+/* ripple rings when words are laid down */
+const ripples=[];
+function ripple(){
+  const geo=new THREE.RingGeometry(.1,.16,48);
+  const mat=new THREE.MeshBasicMaterial({color:0xc69d4d,transparent:true,opacity:.7,side:THREE.DoubleSide});
+  const r=new THREE.Mesh(geo,mat);
+  r.rotation.x=-Math.PI/2;r.position.set(0,-0.3,R.water-7);
+  r.userData={t:0};ripples.push(r);scene.add(r);
+}
+
+/* ── SEED ROOM: your living plant in the earth ── */
+const seedGroup=new THREE.Group();seedGroup.position.set(0,0,R.seed-7);scene.add(seedGroup);
+const mound=new THREE.Mesh(new THREE.SphereGeometry(2.6,24,16,0,Math.PI*2,0,Math.PI/2),
+  new THREE.MeshStandardMaterial({color:0x241c12,roughness:1}));
+mound.scale.y=.35;seedGroup.add(mound);
+let plant3d=null;
+function buildPlant3D(stage){
+  if(plant3d){seedGroup.remove(plant3d)}
+  plant3d=new THREE.Group();
+  const stemMat=new THREE.MeshStandardMaterial({color:0x7d8f68,roughness:.7});
+  const leafMat=new THREE.MeshStandardMaterial({color:0x94a37d,roughness:.7,side:THREE.DoubleSide});
+  if(stage>=1){
+    const h=[0.5,1.1,1.9,2.8,3.4][Math.min(stage,5)-1];
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.03,.05,h,6),stemMat);
+    stem.position.y=.9+h/2;plant3d.add(stem);
+    const leaf=(y,a,s)=>{
+      const l=new THREE.Mesh(new THREE.SphereGeometry(.28*s,10,8),leafMat);
+      l.scale.set(1.6,.4,.7);l.position.set(Math.cos(a)*.4,y,Math.sin(a)*.4);
+      l.rotation.y=-a;plant3d.add(l);
+    };
+    if(stage>=2)leaf(1.5,.4,1);
+    if(stage>=3)leaf(2.0,2.6,1.1);
+    if(stage>=4){leaf(2.6,1.4,1.2);leaf(3.0,4.2,1);}
+    if(stage>=5){
+      const bloom=new THREE.Mesh(new THREE.SphereGeometry(.22,12,10),
+        new THREE.MeshStandardMaterial({color:0xc69d4d,emissive:0x8a6a2a,roughness:.4}));
+      bloom.position.y=.9+h+.15;plant3d.add(bloom);
+      const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending}));
+      halo.scale.set(1.6,1.6,1);halo.position.y=.9+h+.15;plant3d.add(halo);
+    }else if(stage===4){
+      const bud=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8),
+        new THREE.MeshStandardMaterial({color:0xa08040,roughness:.6}));
+      bud.position.y=.9+h+.05;plant3d.add(bud);
+    }
+  }else{
+    const seed=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),
+      new THREE.MeshStandardMaterial({color:0xa8977a}));
+    seed.position.y=.92;plant3d.add(seed);
+  }
+  seedGroup.add(plant3d);
+}
+buildPlant3D(0);
+/* fireflies in the seed room */
+const fireflies=[];
+(function ff(){
+  for(let i=0;i<16;i++){
+    const f=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,opacity:.7,depthWrite:false,blending:THREE.AdditiveBlending}));
+    f.scale.set(.25,.25,1);
+    f.position.set((Math.random()-0.5)*16,1+Math.random()*3,R.seed-3-Math.random()*10);
+    f.userData={ph:Math.random()*6,sp:.4+Math.random()*.5,r:.4+Math.random()*1.2};
+    fireflies.push(f);scene.add(f);
+  }
+})();
+
+/* ── CANDLE ROOM: a field of small flames ── */
+const candleGroup=new THREE.Group();candleGroup.position.set(0,0,R.candle-7);scene.add(candleGroup);
+const candleFlames=[];
+function addCandle3D(seedless){
+  const g=new THREE.Group();
+  const x=(Math.random()-0.5)*16,z=(Math.random()-0.5)*10,h=.5+Math.random()*.9;
+  const wax=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,h,8),
+    new THREE.MeshStandardMaterial({color:0xd9cfb4,roughness:.6}));
+  wax.position.set(x,h/2,z);g.add(wax);
+  const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+  fl.scale.set(.5,.7,1);fl.position.set(x,h+.22,z);
+  fl.userData={ph:Math.random()*6};candleFlames.push(fl);g.add(fl);
+  candleGroup.add(g);
+  return g;
+}
+for(let i=0;i<9;i++)addCandle3D();
+
+/* ── LIBRARY: pages adrift ── */
+const pages=[];
+(function drift(){
+  const mat=new THREE.MeshStandardMaterial({color:0xe9e1cd,roughness:.9,side:THREE.DoubleSide,transparent:true,opacity:.85});
+  for(let i=0;i<14;i++){
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(.7,1),mat);
+    p.position.set((Math.random()-0.5)*18,1+Math.random()*5,R.library-3-Math.random()*12);
+    p.rotation.set(Math.random(),Math.random()*6,Math.random());
+    p.userData={ph:Math.random()*6,sp:.15+Math.random()*.25};
+    pages.push(p);scene.add(p);
+  }
+})();
+
+/* ── DAWN: the far light ── */
+const dawnGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture('rgba(255,210,170,1)','rgba(255,160,110,0)'),transparent:true,opacity:.0,depthWrite:false,blending:THREE.AdditiveBlending}));
+dawnGlow.scale.set(60,44,1);dawnGlow.position.set(0,6,R.dawn-26);scene.add(dawnGlow);
+
+/* ── color moods along the walk ── */
+const moods=[
+  {z:R.threshold, fog:0x0a0d13, amb:0x223044, d:.055},
+  {z:R.water,     fog:0x0a141d, amb:0x1e3448, d:.05},
+  {z:R.seed,      fog:0x120e0a, amb:0x33291c, d:.055},
+  {z:R.candle,    fog:0x0d0906, amb:0x2e2013, d:.06},
+  {z:R.library,   fog:0x0e0f16, amb:0x2a2c3c, d:.05},
+  {z:R.writing,   fog:0x11100c, amb:0x322c1e, d:.052},
+  {z:R.dawn,      fog:0x2a1c20, amb:0x5a3c3a, d:.03},
+];
+const cA=new THREE.Color(),cB=new THREE.Color();
+function mood(z){
+  let i=0;
+  while(i<moods.length-2 && z<moods[i+1].z)i++;
+  const a=moods[i],b=moods[i+1]||a;
+  const span=(a.z-b.z)||1;
+  const t=THREE.MathUtils.clamp((a.z-z)/span,0,1);
+  scene.fog.color.copy(cA.setHex(a.fog).lerp(cB.setHex(b.fog),t));
+  renderer.setClearColor(scene.fog.color);
+  ambient.color.copy(cA.setHex(a.amb).lerp(cB.setHex(b.amb),t));
+  scene.fog.density=a.d+(b.d-a.d)*t;
+  dawnGlow.material.opacity=THREE.MathUtils.clamp((R.writing-z)/24,0,1)*.9;
+}
+
+/* ── the walk: scroll drives the camera, with drift ── */
+let targetP=0,walkP=0;
+function scrollProgress(){
+  const max=document.documentElement.scrollHeight-innerHeight;
+  return max>0?scrollY/max:0;
+}
+addEventListener('scroll',()=>{targetP=scrollProgress()},{passive:true});
+/* wasd + arrows walk too */
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='w'||e.key==='ArrowUp')scrollBy({top:innerHeight*.9,behavior:reduced?'auto':'smooth'});
+  if(k==='s'||e.key==='ArrowDown')scrollBy({top:-innerHeight*.9,behavior:reduced?'auto':'smooth'});
+});
+
+/* mouse sway, like turning your head */
+let swayX=0,swayY=0;
+addEventListener('pointermove',e=>{
+  swayX=(e.clientX/innerWidth-0.5);swayY=(e.clientY/innerHeight-0.5);
+});
+
+const clock=new THREE.Clock();
+function render(){
+  requestAnimationFrame(render);
+  const t=clock.getElapsedTime();
+  walkP+=(targetP-walkP)*(reduced?.5:.035);           /* buttery drift */
+  const z=6+walkP*(R.dawn-18-6);
+  camera.position.z=z;
+  camera.position.x+=((swayX*1.4+Math.sin(z*.35)*1.1*0)-camera.position.x)*.04;
+  camera.position.y+=((1.7+Math.sin(t*.5)*.05-swayY*.6)-camera.position.y)*.04;
+  camera.lookAt(camera.position.x*.5,1.6-swayY*1.2,z-10);
+  walkLight.position.set(camera.position.x,2.4,z-3);
+  mood(z);
+
+  flame.scale.setScalar(1.3+Math.sin(t*1.6)*.25);
+  flame.material.opacity=.8+Math.sin(t*1.6)*.2;
+
+  /* water breathes */
+  const pos=water.geometry.attributes.position;
+  if(Math.abs(z-(R.water-8))<30&&!reduced){
+    for(let i=0;i<pos.count;i++){
+      const x=waterBase[i*3],y=waterBase[i*3+1];
+      pos.array[i*3+2]=Math.sin(x*.5+t*.9)*.08+Math.cos(y*.4+t*.7)*.08;
+    }
+    pos.needsUpdate=true;water.geometry.computeVertexNormals();
+  }
+  floaters.forEach(s=>{s.position.y+=Math.sin(t*s.userData.sp+s.userData.ph)*.0016;
+    s.rotation.y+=.0012;s.rotation.x+=.0007});
+  ripples.forEach((r,i)=>{
+    r.userData.t+=.012;const s=1+r.userData.t*26;
+    r.scale.set(s,s,s);r.material.opacity=Math.max(0,.7-r.userData.t*.9);
+    if(r.material.opacity<=0){scene.remove(r);ripples.splice(i,1)}
+  });
+  fireflies.forEach(f=>{
+    const u=f.userData;
+    f.position.x+=Math.sin(t*u.sp+u.ph)*.004*u.r;
+    f.position.y+=Math.cos(t*u.sp*.8+u.ph)*.003*u.r;
+    f.material.opacity=.4+.4*Math.sin(t*1.3+u.ph);
+  });
+  candleFlames.forEach(f=>{
+    f.material.opacity=.7+.3*Math.sin(t*3.1+f.userData.ph);
+    f.scale.y=.65+.12*Math.sin(t*4+f.userData.ph);
+  });
+  pages.forEach(p=>{
+    p.position.y+=Math.sin(t*p.userData.sp+p.userData.ph)*.002;
+    p.rotation.y+=.0015;p.rotation.z+=.0006;
+  });
+  if(plant3d)plant3d.rotation.y+=.0018;
+  moon.material.opacity=.6+.2*Math.sin(t*.3);
+
+  renderer.render(scene,camera);
+}
+render();
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+/* ───────── editorial reveals + parallax drift ───────── */
+document.querySelectorAll('.room-inner > *, .room-inner .center > *').forEach(el=>{
+  gsap.fromTo(el,{opacity:0,y:34},{opacity:1,y:0,duration:reduced?.4:2.4,ease:'power2.out',
+    scrollTrigger:{trigger:el,start:'top 88%',toggleActions:'play none none none'}});
+});
+document.querySelectorAll('[data-drift]').forEach(el=>{
+  const s=parseFloat(el.dataset.drift);
+  gsap.to(el,{y:()=>-innerHeight*s,ease:'none',
+    scrollTrigger:{trigger:el.closest('section'),start:'top bottom',end:'bottom top',scrub:reduced?false:1.6}});
+});
+/* a soft bell at each doorway */
+document.querySelectorAll('section.room').forEach(sec=>{
+  ScrollTrigger.create({trigger:sec,start:'top 55%',onEnter:()=>bell(.8)});
+});
+
+/* ═══════════════════ ROOM INTERACTIONS ═══════════════════ */
+
+/* ── keeper's book ── */
+async function keep(room,words){
+  const j=await getJSON('qr:journal',[]);
+  j.push({room,words,at:new Date().toISOString()});
+  await store.set('qr:journal',JSON.stringify(j));
+}
+function fmtDate(iso){
+  return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+}
+async function renderBook(){
+  const j=await getJSON('qr:journal',[]);
+  const box=$('#book-entries');
+  if(!j.length){box.innerHTML='<p class="whisper" style="color:var(--parchment-dim)">The book is open, and its pages are still blank.<br>What you keep in the Writing Room, and every seed you water, will rest here.</p>';return}
+  box.innerHTML=j.slice().reverse().map(e=>`
+    <div class="book-entry">
+      <span class="small-voice">${e.room} · ${fmtDate(e.at)}</span>
+      <p>${e.words.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</p>
+    </div>`).join('');
+}
+$('#book-toggle').addEventListener('click',async()=>{await renderBook();$('#book').classList.add('open')});
+$('#book-close').addEventListener('click',()=>$('#book').classList.remove('open'));
+
+/* ── water room ── */
+const SECOND_QUESTIONS=[
+  "What would it feel like to lay one thing down?",
+  "If the water could carry one of these away for the night, which would you give it?",
+  "What is the smallest part of this that could rest now?",
+  "If this had a weight, where in your body are you carrying it?"
+];
+$('#lay-down').addEventListener('click',async()=>{
+  const pool=$('#pool');const text=pool.value.trim();if(!text)return;
+  pool.classList.add('dissolving');
+  gsap.to('#lay-down',{opacity:0,duration:1.5,pointerEvents:'none'});
+  ripple();setTimeout(ripple,900);setTimeout(ripple,2000);
+  bell(.6);
+  const ans=$('#water-answer');
+  setTimeout(()=>{pool.classList.add('hidden');$('#lay-down').classList.add('hidden');
+    ans.classList.remove('hidden');
+    gsap.fromTo(ans,{opacity:0},{opacity:1,duration:2});
+  },reduced?300:3400);
+  const line=await mirror(text,MIRROR_GUIDE)
+    ||"The water is holding what you have written. It does not need it explained.";
+  setTimeout(()=>{
+    $('#water-listening').style.display='none';
+    const m=$('#mirror-line');m.textContent=line;
+    gsap.fromTo(m,{opacity:0,y:14},{opacity:1,y:0,duration:reduced?.4:3});
+    setTimeout(()=>{
+      const q=$('#second-question');
+      q.textContent=SECOND_QUESTIONS[Math.floor(Math.random()*SECOND_QUESTIONS.length)];
+      gsap.fromTo(q,{opacity:0},{opacity:1,duration:reduced?.4:2.6});
+      setTimeout(()=>{
+        const b=$('#water-again');b.classList.remove('hidden');
+        gsap.fromTo(b,{opacity:0},{opacity:1,duration:2});
+      },reduced?200:4800);
+    },reduced?200:4600);
+  },reduced?500:6200);
+});
+$('#water-again').addEventListener('click',()=>{
+  const pool=$('#pool');pool.value='';pool.classList.remove('dissolving','hidden');
+  const lay=$('#lay-down');lay.classList.remove('hidden');
+  gsap.set(lay,{opacity:1,pointerEvents:'auto'});
+  $('#water-answer').classList.add('hidden');
+  $('#water-listening').style.display='';
+  $('#mirror-line').textContent='';$('#second-question').textContent='';
+  $('#water-again').classList.add('hidden');
+});
+
+/* ── seed room ── */
+function daysSince(iso){return Math.max(0,Math.floor((Date.now()-new Date(iso))/86400000))}
+function growthStage(seed){
+  const g=daysSince(seed.plantedAt)+(seed.tendings||[]).length*1.5;
+  if(g<1)return 0;if(g<3)return 1;if(g<7)return 2;if(g<14)return 3;if(g<28)return 4;return 5;
+}
+const AGE_LINES=[
+  "planted today. it is resting in the dark, as all beginnings do.",
+  "a pale shoot has found its way up.",
+  "a first leaf has opened.",
+  "it is young, and it is growing.",
+  "a bud is forming. no one can hurry it.",
+  "it is in bloom."
+];
+function drawPlantSVG(stage){
+  const svg=$('#plant-svg');
+  const parts=[`<line x1="30" y1="200" x2="170" y2="200" stroke="rgba(233,225,205,.14)" stroke-width="1"/>`];
+  if(stage===0)parts.push(`<ellipse cx="100" cy="206" rx="5" ry="4" class="seed-dot"/>`);
+  if(stage>=1){const top=[168,140,110,78,58][stage-1];
+    parts.push(`<path d="M100 200 C 100 ${top+40} 98 ${top+16} 100 ${top}" class="plant-line"/>`)}
+  if(stage>=2)parts.push(`<path d="M100 168 Q78 158 72 138 Q94 146 100 162 Z" class="plant-leaf"/>`);
+  if(stage>=3)parts.push(`<path d="M100 142 Q124 132 132 112 Q106 120 100 136 Z" class="plant-leaf"/>`);
+  if(stage>=4){parts.push(`<path d="M100 116 Q76 106 68 84 Q94 92 100 110 Z" class="plant-leaf"/>`);
+    parts.push(`<path d="M100 96 Q122 88 130 68 Q104 76 100 92 Z" class="plant-leaf"/>`);
+    if(stage===4)parts.push(`<circle cx="100" cy="74" r="6" class="plant-bloom" opacity=".55"/>`)}
+  if(stage>=5){parts.push(`<circle cx="100" cy="56" r="4" class="plant-bloom"/>`);
+    for(let i=0;i<6;i++){const a=i*Math.PI/3,cx=100+Math.cos(a)*11,cy=56+Math.sin(a)*11;
+      parts.push(`<ellipse cx="${cx}" cy="${cy}" rx="6.5" ry="4.5" transform="rotate(${a*180/Math.PI} ${cx} ${cy})" class="plant-bloom" opacity=".85"/>`)}}
+  svg.innerHTML=parts.join('');
+}
+async function openSeedRoom(){
+  const seed=await getJSON('qr:seed',null);
+  if(!seed){$('#planting').classList.remove('hidden');$('#tending').classList.add('hidden')}
+  else{
+    $('#planting').classList.add('hidden');$('#tending').classList.remove('hidden');
+    const stage=growthStage(seed);
+    drawPlantSVG(stage);buildPlant3D(stage);
+    $('#seed-title').textContent='“'+seed.name+'”';
+    const d=daysSince(seed.plantedAt);
+    $('#seed-age').textContent=AGE_LINES[stage]+(d>0?` · ${d} day${d===1?'':'s'} in the earth`:'');
+  }
+}
+$('#plant-btn').addEventListener('click',async()=>{
+  const name=$('#seed-name').value.trim();if(!name)return;
+  await store.set('qr:seed',JSON.stringify({name,plantedAt:new Date().toISOString(),tendings:[]}));
+  bell();openSeedRoom();
+});
+$('#tend-btn').addEventListener('click',async()=>{
+  const words=$('#tend-words').value.trim();if(!words)return;
+  const seed=await getJSON('qr:seed',null);if(!seed)return;
+  seed.tendings=seed.tendings||[];
+  seed.tendings.push({at:new Date().toISOString(),words});
+  await store.set('qr:seed',JSON.stringify(seed));
+  await keep('the seed room · watering “'+seed.name+'”',words);
+  gsap.to('#tend-btn',{opacity:0,duration:1.2,pointerEvents:'none'});
+  const line=await mirror(`The seed they planted is called "${seed.name}". Today, tending it, they wrote: ${words}`,TEND_GUIDE)
+    ||"The earth has taken your words. Nothing more is asked of you tonight.";
+  const stage=growthStage(seed);drawPlantSVG(stage);buildPlant3D(stage);
+  $('#tend-answer').classList.remove('hidden');
+  const m=$('#tend-mirror');m.textContent=line;
+  gsap.fromTo(m,{opacity:0,y:12},{opacity:1,y:0,duration:reduced?.4:2.8});
+});
+openSeedRoom();
+
+/* ── candle room ── */
+async function candleCount(){
+  const c=await getJSON('qr:candles',[]);
+  $('#candle-count').textContent=c.length
+    ?`${c.length} light${c.length===1?'':'s'} of yours ${c.length===1?'is':'are'} burning here`
+    :'the flames you see were lit by the room itself, keeping watch';
+  return c;
+}
+(async()=>{const c=await candleCount();c.forEach(()=>addCandle3D())})();
+$('#candle-btn').addEventListener('click',async()=>{
+  const name=$('#candle-name').value.trim();if(!name)return;
+  const c=await getJSON('qr:candles',[]);
+  c.push({name,at:new Date().toISOString()});
+  await store.set('qr:candles',JSON.stringify(c));
+  addCandle3D();bell(.7);
+  $('#candle-name').value='';
+  await candleCount();
+  gsap.fromTo('#candle-count',{opacity:0},{opacity:1,duration:2});
+});
+
+/* ── library room ── */
+const LIBRARY=[
+  ["Be patient toward all that is unsolved in your heart and try to love the questions themselves.","Rainer Maria Rilke"],
+  ["The quieter you become, the more you are able to hear.","attributed to Rumi"],
+  ["Learning to see is far more important than simply looking.","after Frederick Franck"],
+  ["Nature does not hurry, yet everything is accomplished.","Lao Tzu"],
+  ["What is essential is invisible to the eye.","Antoine de Saint-Exupéry"],
+  ["Smile, breathe, and go slowly.","Thich Nhat Hanh"],
+  ["You are not a drop in the ocean. You are the entire ocean in a drop.","attributed to Rumi"],
+  ["The real voyage of discovery consists not in seeking new landscapes, but in having new eyes.","after Marcel Proust"]
+];
+let libIdx=Math.floor(Math.random()*LIBRARY.length);
+function turnPage(){
+  const [line,src]=LIBRARY[libIdx%LIBRARY.length];libIdx++;
+  const l=$('#library-line'),s=$('#library-source');
+  gsap.to([l,s],{opacity:0,duration:1,onComplete:()=>{
+    l.textContent='“'+line+'”';s.textContent='— '+src;
+    gsap.to([l,s],{opacity:1,duration:reduced?.4:2.4});
+  }});
+}
+turnPage();
+$('#library-btn').addEventListener('click',turnPage);
+
+/* ── writing room ── */
+$('#journal-keep').addEventListener('click',async()=>{
+  const words=$('#journal-words').value.trim();if(!words)return;
+  await keep('the writing room',words);
+  bell(.7);
+  $('#journal-words').value='';
+  $('#journal-note').textContent='kept · '+fmtDate(new Date().toISOString())+' · it rests in the keeper’s book now';
+  gsap.fromTo('#journal-note',{opacity:0},{opacity:1,duration:2});
+});
+
+/* ── dawn ── */
+$('#return-btn').addEventListener('click',()=>{
+  scrollTo({top:0,behavior:reduced?'auto':'smooth'});
+});
+</script>
+</body>
+</html>

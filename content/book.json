@@ -1,0 +1,21 @@
+{
+  "title": "Momo",
+  "author": "Monica Boccardi",
+  "status": "to be continued",
+  "canonicalEdition": "editions/text/index.html",
+  "rooms": [
+    {"number": 1, "title": "The First Room"},
+    {"number": 2, "title": "A Room with Windows"},
+    {"number": 3, "title": "A Room Full of Voices"},
+    {"number": 4, "title": "A Room of Shadows"},
+    {"number": 5, "title": "A Room of Transformation"},
+    {"number": 6, "title": "A Room of Belonging"},
+    {"number": 7, "title": "A Room in the Concrete Jungle"},
+    {"number": 8, "title": "A Room Without Words"},
+    {"number": 9, "title": "A Room for Two"},
+    {"number": 10, "title": "A Room Beside the Alster"},
+    {"number": 11, "title": "The Angel of Peace"},
+    {"number": 12, "title": "True"}
+  ]
+}
+

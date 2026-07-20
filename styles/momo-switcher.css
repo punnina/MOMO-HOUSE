@@ -1,0 +1,83 @@
+.momo-switcher {
+  position: fixed;
+  top: .8rem;
+  left: 50%;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(5.4rem, auto));
+  align-items: stretch;
+  width: min(47rem, calc(100vw - 1.5rem));
+  transform: translateX(-50%);
+  border: 1px solid rgba(194, 155, 74, .28);
+  border-radius: 999px;
+  background: rgba(16, 13, 20, .86);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, .24);
+  color: #f6f2ea;
+  font-family: 'Lora', Georgia, serif;
+  line-height: 1.1;
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.momo-switcher__label {
+  display: flex;
+  align-items: center;
+  padding: .62rem 1rem .62rem 1.2rem;
+  border-right: 1px solid rgba(194, 155, 74, .2);
+  color: rgba(246, 242, 234, .58);
+  font-size: .64rem;
+  font-style: italic;
+  white-space: nowrap;
+}
+.momo-switcher a {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 3.35rem;
+  padding: .54rem .8rem;
+  color: rgba(246, 242, 234, .7);
+  text-align: center;
+  text-decoration: none;
+  transition: color .3s ease, background .3s ease;
+}
+.momo-switcher a + a { border-left: 1px solid rgba(194, 155, 74, .14); }
+.momo-switcher a:hover,
+.momo-switcher a:focus-visible {
+  color: #fff;
+  background: rgba(194, 155, 74, .12);
+  outline: none;
+}
+.momo-switcher a[aria-current="page"] {
+  color: #e8c98a;
+  background: rgba(194, 155, 74, .16);
+}
+.momo-switcher strong {
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.momo-switcher small {
+  margin-top: .24rem;
+  color: inherit;
+  font-size: .58rem;
+  font-style: italic;
+  letter-spacing: .01em;
+  opacity: .68;
+  white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .momo-switcher {
+    top: .45rem;
+    grid-template-columns: repeat(4, 1fr);
+    width: calc(100vw - .8rem);
+    border-radius: 18px;
+  }
+  .momo-switcher__label { display: none; }
+  .momo-switcher a { min-height: 3.05rem; padding: .5rem .2rem; }
+  .momo-switcher strong { font-size: .61rem; letter-spacing: .1em; }
+  .momo-switcher small { font-size: .5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .momo-switcher a { transition: none; }
+}

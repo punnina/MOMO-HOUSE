@@ -10,6 +10,13 @@ const pages = [
   "experiences/quiet/index.html"
 ];
 
+const expectedExperienceLinks = {
+  "index.html": ["./", "editions/text/", "editions/living/", "experiences/quiet/"],
+  "editions/text/index.html": ["../../", "./", "../living/", "../../experiences/quiet/"],
+  "editions/living/index.html": ["../../", "../text/", "./", "../../experiences/quiet/"],
+  "experiences/quiet/index.html": ["../../", "../../editions/text/", "../../editions/living/", "./"]
+};
+
 const htmlByPage = new Map();
 for (const page of pages) {
   const html = await readFile(resolve(root, page), "utf8");
@@ -24,6 +31,23 @@ for (const edition of ["editions/text/index.html", "editions/living/index.html"]
       throw new Error(`${edition} is missing Room ${room.number}: ${room.title}`);
     }
   }
+}
+
+for (const [page, expectedLinks] of Object.entries(expectedExperienceLinks)) {
+  const html = htmlByPage.get(page);
+  if (!html.includes('aria-label="Choose a Momo experience"')) {
+    throw new Error(`${page} has no experience switcher`);
+  }
+  for (const href of expectedLinks) {
+    if (!html.includes(`href="${href}"`)) {
+      throw new Error(`${page} is missing an experience link: ${href}`);
+    }
+  }
+}
+
+const house = htmlByPage.get("index.html");
+if (!house.includes("walk Rooms I–II") || !house.includes("all twelve rooms")) {
+  throw new Error("The House does not clearly distinguish its two built rooms from the complete editions");
 }
 
 const localLinks = [];
@@ -41,4 +65,3 @@ for (const [page, href] of localLinks) {
 }
 
 console.log(`Momo House is complete: ${book.rooms.length} rooms across ${pages.length} experiences.`);
-

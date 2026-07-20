@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link href="../../styles/momo-switcher.css" rel="stylesheet">
 <style>
   :root{
     --parchment:#e9e1cd;
@@ -196,6 +197,14 @@
 </style>
 </head>
 <body>
+
+<nav class="momo-switcher" aria-label="Choose a Momo experience">
+  <span class="momo-switcher__label">choose a way to enter</span>
+  <a href="../../"><strong>House</strong><small>walk Rooms I–II</small></a>
+  <a href="../../editions/text/"><strong>Reading</strong><small>all twelve rooms</small></a>
+  <a href="../../editions/living/"><strong>Living</strong><small>all twelve rooms</small></a>
+  <a href="./" aria-current="page"><strong>Quiet</strong><small>the sanctuary</small></a>
+</nav>
 
 <canvas id="world"></canvas>
 <div class="vignette" aria-hidden="true"></div>

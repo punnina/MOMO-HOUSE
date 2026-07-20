@@ -3,6 +3,12 @@
   "author": "Monica Boccardi",
   "status": "to be continued",
   "canonicalEdition": "editions/text/index.html",
+  "experienceAvailability": {
+    "house": {"builtRooms": [1, 2], "continuesIn": "editions/text/index.html#room3"},
+    "text": {"completeThroughRoom": 12},
+    "living": {"completeThroughRoom": 12},
+    "quiet": {"rooms": 6, "kind": "companion sanctuary"}
+  },
   "rooms": [
     {"number": 1, "title": "The First Room"},
     {"number": 2, "title": "A Room with Windows"},
@@ -18,4 +24,3 @@
     {"number": 12, "title": "True"}
   ]
 }
-

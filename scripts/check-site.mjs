@@ -46,8 +46,30 @@ for (const [page, expectedLinks] of Object.entries(expectedExperienceLinks)) {
 }
 
 const house = htmlByPage.get("index.html");
-if (!house.includes("walk Rooms I–II") || !house.includes("all twelve rooms")) {
-  throw new Error("The House does not clearly distinguish its two built rooms from the complete editions");
+const canonical = htmlByPage.get("editions/text/index.html");
+const normalizeParagraph = value => value.replace(/<[^>]+>/g, " ").replace(/&rsquo;/g, "’")
+  .replace(/&mdash;/g, "—").replace(/&hellip;/g, "…").replace(/\s+/g, " ").trim();
+const paragraphsWithin = html => [...html.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/g)]
+  .map(match => normalizeParagraph(match[1]));
+for (const room of book.rooms) {
+  if (!house.includes(`id="r-room${room.number}"`)) {
+    throw new Error(`The continuous House is missing Room ${room.number}: ${room.title}`);
+  }
+  if (room.number >= 3) {
+    const next = room.number + 1;
+    const houseStart = house.indexOf(`id="r-room${room.number}"`);
+    const houseEnd = next <= 12 ? house.indexOf(`id="t-room${next}"`, houseStart) : house.indexOf('id="t-end"', houseStart);
+    const canonicalStart = canonical.indexOf(`id="room${room.number}"`);
+    const canonicalEnd = next <= 12 ? canonical.indexOf(`id="room${next}"`, canonicalStart) : canonical.indexOf("to-be-continued", canonicalStart);
+    const houseParagraphs = paragraphsWithin(house.slice(houseStart, houseEnd));
+    const canonicalParagraphs = paragraphsWithin(canonical.slice(canonicalStart, canonicalEnd));
+    if (JSON.stringify(houseParagraphs) !== JSON.stringify(canonicalParagraphs)) {
+      throw new Error(`The House prose has drifted from the canonical manuscript in Room ${room.number}`);
+    }
+  }
+}
+if (!house.includes("walk all twelve") || !house.includes("all twelve rooms")) {
+  throw new Error("The House does not clearly identify its complete twelve-room walk");
 }
 
 const localLinks = [];

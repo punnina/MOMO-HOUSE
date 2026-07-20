@@ -4,7 +4,7 @@
   "status": "to be continued",
   "canonicalEdition": "editions/text/index.html",
   "experienceAvailability": {
-    "house": {"builtRooms": [1, 2], "continuesIn": "editions/text/index.html#room3"},
+    "house": {"completeThroughRoom": 12, "kind": "continuous walk"},
     "text": {"completeThroughRoom": 12},
     "living": {"completeThroughRoom": 12},
     "quiet": {"rooms": 6, "kind": "companion sanctuary"}
